@@ -1,0 +1,5 @@
+# IDE metadata
+.idea/
+
+# Private machine-local context (do not commit)
+.local/
