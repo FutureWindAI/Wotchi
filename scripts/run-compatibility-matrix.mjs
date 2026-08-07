@@ -102,14 +102,18 @@ const npmEnvironment = {
   npm_config_audit: "false",
   npm_config_fund: "false",
 };
-const packReport = JSON.parse(
-  execFileSync("npm", ["pack", "--json", "--silent"], {
-    cwd,
-    encoding: "utf8",
-    env: npmEnvironment,
-  }),
-);
-const packageFile = packReport[0]?.filename;
+const packOutput = execFileSync("npm", ["pack", "--json", "--silent"], {
+  cwd,
+  encoding: "utf8",
+  env: npmEnvironment,
+}).trim();
+let packageFile;
+try {
+  packageFile = JSON.parse(packOutput)[0]?.filename;
+} catch {
+  // npm 8 (used by Node.js 16) prints only the filename even with --json.
+  packageFile = packOutput.split(/\r?\n/).at(-1)?.trim();
+}
 if (typeof packageFile !== "string") {
   throw new Error("npm pack did not return a tarball filename");
 }

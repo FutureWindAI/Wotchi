@@ -56,9 +56,9 @@ jobs:
         run: npm run security:audit
 
       - name: Secret scan
-        uses: gitleaks/gitleaks-action@v2
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        uses: docker://zricethezav/gitleaks:latest
+        with:
+          args: detect --source=/github/workspace --no-banner --redact
 
   osv:
     name: OSV-Scanner
