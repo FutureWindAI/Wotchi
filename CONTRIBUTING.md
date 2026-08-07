@@ -17,7 +17,20 @@ The planned first release is a small in-process incident assistant for Node.js, 
 
 New dependencies and version upgrades require prior discussion, an explicit purpose, and dependency-security review. Do not weaken the Node.js, Express, NestJS, CommonJS, or ECMAScript module compatibility targets without measured evidence and approval.
 
-Once source implementation begins, changes will be expected to pass the repository's available build, typecheck, lint, test, dependency-audit, package-content, and performance checks. The exact commands will be documented with the implementation; they do not exist during repository setup.
+Changes should pass the applicable repository checks:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm run build
+npm test
+node test/compatibility/package-exports.smoke.cjs
+npm run security:all
+npm pack --dry-run --json
+```
+
+Performance and compatibility-matrix commands become required when their later implementation phases add those harnesses.
 
 ## Pull Requests
 

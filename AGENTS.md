@@ -2,7 +2,7 @@
 
 ## Current Status
 
-Wotchi is a pre-release, planning-stage open-source project. No npm release or supported package implementation exists yet.
+Wotchi is a pre-release open-source project. Phases 1–6 provide the package foundation, safe-input boundary, bounded core incident engine, console and Telegram notifiers, Express 4/5 middleware, NestJS 10/11 exception-filter integration, and opt-in process monitoring. No npm release exists.
 
 If `.local/AGENTS.md` exists, read it before planning or changing this repository. That file contains machine-local context and must remain ignored.
 
@@ -27,6 +27,8 @@ Do not expand the MVP into a hosted monitoring platform, log database, dashboard
 - Keep public claims aligned with code and verification evidence.
 - Never commit credentials, tokens, `.env` files, real customer errors, customer data, private planning files, or machine-specific paths.
 - Add focused tests for implementation changes and run the available build, typecheck, lint, test, security, package-content, and benchmark checks that apply.
+- Keep public API changes behind the root and documented subpath exports; do not import framework runtime code from the root entry point.
+- Keep `src/` implementation and public contributor documentation in Git. Keep `.local/`, `.idea/`, `.test_stands/`, generated `dist/`, and `node_modules/` out of Git and package archives.
 
 ## Public Repository Boundary
 

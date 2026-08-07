@@ -2,11 +2,11 @@
 
 > Your production's night shift.
 
-Wotchi is a planned lightweight incident assistant for Node.js applications. It is intended to help small teams turn repeated Express and NestJS application errors into a small number of useful console or Telegram alerts without operating a separate monitoring stack.
+Wotchi is a lightweight incident assistant for Node.js applications. It is intended to help small teams turn repeated Express and NestJS application errors into a small number of useful console or Telegram alerts without operating a separate monitoring stack.
 
-> **Project status:** planning and repository setup. No Wotchi npm version is available yet, and no package implementation is present in this repository.
+> **Project status:** Phases 1–6 are implemented locally: bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, and opt-in crash observation. Broader runtime-matrix CI and npm publication remain deferred.
 
-The working package name is `/wotchi`. Product-name, trademark, and competing-product clearance must be completed before the first public package release. Do not install similarly named packages expecting this project.
+The working package name is `@futurewindai/wotchi`. Product-name, trademark, and competing-product clearance must be completed before the first public package release. Do not install similarly named packages expecting this project.
 
 ## Planned v0.1 Scope
 
@@ -20,7 +20,78 @@ The working package name is `/wotchi`. Product-name, trademark, and competing-pr
 - CommonJS and ECMAScript module package exports;
 - measured latency, CPU, heap, queue, and package-size release gates.
 
-The planned package will expose a root entry point plus focused `/express` and `/nest` entry points. Exact API examples and installation instructions will be published only after the package exists and its compatibility tests pass.
+The package exposes a root entry point plus focused `/express` and `/nest` entry points. Framework adapters are loaded only through their subpaths, and they observe errors while leaving response ownership with Express or NestJS.
+
+Express applications install the middleware after routes and before the existing final error handler:
+
+```ts
+import express from "express";
+import { consoleNotifier, createWotchi } from "@futurewindai/wotchi";
+import { wotchiErrorHandler } from "@futurewindai/wotchi/express";
+
+const app = express();
+const wotchi = createWotchi({
+  service: "orders-api",
+  environment: "production",
+  notifiers: [consoleNotifier()],
+});
+
+app.use(wotchiErrorHandler(wotchi));
+```
+
+NestJS applications register the delegating global filter once after creating the application:
+
+```ts
+import { registerWotchiNest } from "@futurewindai/wotchi/nest";
+
+registerWotchiNest(app, wotchi);
+```
+
+Telegram is an optional self-hosted notifier. The application owner creates a bot with BotFather, starts or adds it to the destination chat, and keeps the credentials outside source control:
+
+```ts
+import { consoleNotifier, createWotchi, telegramNotifier } from "@futurewindai/wotchi";
+
+const wotchi = createWotchi({
+  service: "orders-api",
+  environment: "production",
+  notifiers: [
+    consoleNotifier(),
+    telegramNotifier({
+      botToken: process.env.WOTCHI_TELEGRAM_BOT_TOKEN ?? "",
+      chatId: process.env.WOTCHI_TELEGRAM_CHAT_ID ?? "",
+    }),
+  ],
+});
+```
+
+Wotchi does not ship a shared bot token. Telegram delivery is queued outside the request path, uses bounded HTTPS timeouts/retries, and sends only the sanitized incident alert.
+
+Crash observation is also opt-in:
+
+```ts
+import { registerWotchiProcessMonitor } from "@futurewindai/wotchi";
+
+const monitor = registerWotchiProcessMonitor(wotchi);
+// monitor.unregister() when the host intentionally stops observing crashes
+```
+
+The implemented core can be exercised directly:
+
+```ts
+import { consoleNotifier, createWotchi } from "@futurewindai/wotchi";
+
+const wotchi = createWotchi({
+  service: "orders-api",
+  environment: "production",
+  notifiers: [consoleNotifier()],
+});
+
+wotchi.captureException(new Error("database query failed"));
+await wotchi.flush();
+```
+
+The default policy emits after three matching errors in one minute and suppresses duplicate alerts during the cooldown. The capture path remains synchronous; `flush()` is only needed when the host explicitly wants to wait for notifier work.
 
 ## Product Principles
 
@@ -36,13 +107,15 @@ The planned package will expose a root entry point plus focused `/express` and `
 - a hosted dashboard, collector, or persistent incident history;
 - AI-generated summaries;
 - Slack, Discord, email, or generic webhook notifiers;
-- logger transports, Docker collectors, Kubernetes agents, or Helm charts;
+- logger transports, Docker collectors, Kubernetes agents, or Helm charts in the npm SDK itself; a separate future collector/relay deployment may receive its own Docker and Helm milestone;
 - automatic remediation.
 
 A token-based hosted demo viewer is a separate possible future milestone, not part of the package MVP.
 
 ## Project Documents
 
+- [Architecture and package boundaries](docs/ARCHITECTURE.md)
+- [Development workflow](docs/DEVELOPMENT.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Changelog](CHANGELOG.md)

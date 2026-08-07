@@ -1,0 +1,111 @@
+{
+  "name": "@futurewindai/wotchi",
+  "version": "0.1.0-beta.1",
+  "description": "Lightweight incident alerts for Node.js, Express, and NestJS applications",
+  "license": "Apache-2.0",
+  "type": "module",
+  "engines": {
+    "node": ">=16.20.0"
+  },
+  "sideEffects": false,
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "SECURITY.md",
+    "LICENSE"
+  ],
+  "main": "./dist/cjs/index.js",
+  "module": "./dist/esm/index.js",
+  "types": "./dist/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/esm/index.js",
+      "require": "./dist/cjs/index.js"
+    },
+    "./express": {
+      "types": "./dist/types/integrations/express/index.d.ts",
+      "import": "./dist/esm/integrations/express/index.js",
+      "require": "./dist/cjs/integrations/express/index.js"
+    },
+    "./nest": {
+      "types": "./dist/types/integrations/nest/index.d.ts",
+      "import": "./dist/esm/integrations/nest/index.js",
+      "require": "./dist/cjs/integrations/nest/index.js"
+    }
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/FutureWindAI/Wotchi.git"
+  },
+  "homepage": "https://github.com/FutureWindAI/Wotchi#readme",
+  "bugs": {
+    "url": "https://github.com/FutureWindAI/Wotchi/issues"
+  },
+  "scripts": {
+    "clean": "node scripts/clean.mjs",
+    "build:esm": "tsc -p tsconfig.esm.json",
+    "build:cjs": "tsc -p tsconfig.cjs.json",
+    "build:types": "tsc -p tsconfig.types.json",
+    "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types && node scripts/prepare-package.mjs",
+    "stand": "node scripts/start-test-stand.mjs",
+    "typecheck": "tsc -p tsconfig.base.json --noEmit",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test:compile": "tsc -p tsconfig.test.json",
+    "test": "npm run test:compile && node --test .test-dist/test/unit/*.test.js .test-dist/test/integration/express/*.test.js .test-dist/test/integration/nest/*.test.js .test-dist/test/security/*.test.js",
+    "pack:dry-run": "npm run build && npm pack --dry-run --json",
+    "verify:package": "npm run build && node scripts/verify-package.mjs",
+    "test:compat": "npm run build && node test/compatibility/package-exports.smoke.cjs && node test/compatibility/framework-isolation.cjs",
+    "test:compat:matrix": "npm run build && node scripts/run-compatibility-matrix.mjs",
+    "benchmark": "npm run build && node --expose-gc scripts/run-benchmarks.mjs",
+    "benchmark:queue": "npm run test:compile && node --test .test-dist/test/performance/queue-saturation.bench.js",
+    "security:audit": "npm audit --audit-level=moderate",
+    "security:osv": "osv-scanner --lockfile package-lock.json",
+    "security:all": "npm run security:audit && npm run security:osv"
+  },
+  "peerDependencies": {
+    "@nestjs/common": "^10.4.0 || ^11.0.0",
+    "@nestjs/core": "^10.4.0 || ^11.0.0",
+    "express": "^4.18.0 || ^5.0.0",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.0"
+  },
+  "peerDependenciesMeta": {
+    "@nestjs/common": {
+      "optional": true
+    },
+    "@nestjs/core": {
+      "optional": true
+    },
+    "express": {
+      "optional": true
+    },
+    "reflect-metadata": {
+      "optional": true
+    },
+    "rxjs": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@nestjs/common": "^11.1.28",
+    "@nestjs/core": "^11.1.28",
+    "@nestjs/platform-express": "^11.1.28",
+    "@types/express": "^5.0.6",
+    "@types/node": "^16.18.126",
+    "eslint": "^10.8.0",
+    "express": "^5.2.1",
+    "prettier": "^3.9.6",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.66.0"
+  }
+}

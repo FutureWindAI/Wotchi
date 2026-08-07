@@ -3,3 +3,9 @@
 
 # Private machine-local context (do not commit)
 .local/
+
+# Manual local smoke test stands (not committed)
+.test_stands/
+.test-dist/
+dist/
+node_modules/
