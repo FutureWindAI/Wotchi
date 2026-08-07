@@ -4,6 +4,10 @@
 # Private machine-local context (do not commit)
 .local/
 
+# Agent instructions stay local to the development workspace
+/AGENTS.md
+/CLAUDE.md
+
 # Manual local smoke test stands (not committed)
 .test_stands/
 .test-dist/
