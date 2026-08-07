@@ -1,6 +1,6 @@
 # Wotchi compatibility evidence
 
-The package declares Node.js `>=16.20.0` and keeps framework dependencies optional peers. The declaration is a compatibility target; each combination must be verified before it is advertised as supported.
+The package declares Node.js `>=18.18.0` and keeps framework dependencies optional peers. The declaration is a compatibility target; each combination must be verified before it is advertised as supported.
 
 ## Verified locally
 
@@ -19,7 +19,6 @@ The package export smoke tests also cover ESM/CommonJS root, `/express`, and `/n
 
 `scripts/run-compatibility-matrix.mjs` builds a packed tarball, installs it into a temporary consumer project, installs the requested framework major, and runs small CommonJS/ESM export assertions. The matrix selects the combinations required by the Node.js major:
 
-- Node.js 16: core/CommonJS, Express 4/CommonJS, NestJS 10/CommonJS.
 - Node.js 18: core, Express 4/5, and NestJS 10 in both module formats.
 - Node.js 20 and later: core, Express 4/5, and NestJS 10/11 in both module formats.
 
@@ -30,8 +29,8 @@ npm run build
 node scripts/run-compatibility-matrix.mjs --framework core --module commonjs
 ```
 
-The hosted CI workflow runs the full matrix on Node.js 16, 18, 20, 22, 24, and 26. A local registry or DNS failure is inconclusive and must not be recorded as a compatibility failure or a pass.
+The hosted CI workflow runs the full matrix on Node.js 18, 20, 22, 24, and 26. A local registry or DNS failure is inconclusive and must not be recorded as a compatibility failure or a pass.
 
 ## Not yet claimed
 
-Node.js 16, 18, 20, 22, 24, and 26 jobs, plus every ESM/CommonJS and framework-major combination, still require clean packed-tarball CI verification. Until those jobs pass, documentation and release material must describe them as targets or compatibility-only checks rather than certified support.
+Node.js 18, 20, 22, 24, and 26 jobs, plus every ESM/CommonJS and framework-major combination, still require clean packed-tarball CI verification. Until those jobs pass, documentation and release material must describe them as targets or compatibility-only checks rather than certified support.

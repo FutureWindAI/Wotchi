@@ -19,36 +19,33 @@ const framework = args.get("framework") ?? "core";
 const moduleFormat = args.get("module") ?? "commonjs";
 const scriptPath = fileURLToPath(import.meta.url);
 const nodeMajor = Number(process.versions.node.split(".")[0]);
+if (nodeMajor < 18) {
+  throw new Error(`Node.js >=18.18.0 is required (running ${process.version})`);
+}
 const matrixForNode =
-  nodeMajor <= 16
+  nodeMajor === 18
     ? [
         ["core", "commonjs"],
+        ["core", "esm"],
         ["express4", "commonjs"],
+        ["express4", "esm"],
+        ["express5", "commonjs"],
+        ["express5", "esm"],
         ["nest10", "commonjs"],
+        ["nest10", "esm"],
       ]
-    : nodeMajor === 18
-      ? [
-          ["core", "commonjs"],
-          ["core", "esm"],
-          ["express4", "commonjs"],
-          ["express4", "esm"],
-          ["express5", "commonjs"],
-          ["express5", "esm"],
-          ["nest10", "commonjs"],
-          ["nest10", "esm"],
-        ]
-      : [
-          ["core", "commonjs"],
-          ["core", "esm"],
-          ["express4", "commonjs"],
-          ["express4", "esm"],
-          ["express5", "commonjs"],
-          ["express5", "esm"],
-          ["nest10", "commonjs"],
-          ["nest10", "esm"],
-          ["nest11", "commonjs"],
-          ["nest11", "esm"],
-        ];
+    : [
+        ["core", "commonjs"],
+        ["core", "esm"],
+        ["express4", "commonjs"],
+        ["express4", "esm"],
+        ["express5", "commonjs"],
+        ["express5", "esm"],
+        ["nest10", "commonjs"],
+        ["nest10", "esm"],
+        ["nest11", "commonjs"],
+        ["nest11", "esm"],
+      ];
 if (framework === "all" || moduleFormat === "both") {
   const combinations =
     framework === "all"
@@ -111,7 +108,7 @@ let packageFile;
 try {
   packageFile = JSON.parse(packOutput)[0]?.filename;
 } catch {
-  // npm 8 (used by Node.js 16) prints only the filename even with --json.
+  // Older npm versions can print only the filename even with --json.
   const outputLines = packOutput.split(/\r?\n/);
   packageFile = outputLines[outputLines.length - 1]?.trim();
 }

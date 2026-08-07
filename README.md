@@ -99,7 +99,7 @@ The default policy emits after three matching errors in one minute and suppresse
 - **Bounded overhead:** memory, payloads, groups, and queued notifications must all have explicit limits.
 - **Privacy first:** request bodies, response bodies, raw headers, and arbitrary environment variables are outside the first release.
 - **Deterministic first:** the MVP must work without an AI provider, database, hosted account, or collector.
-- **Honest compatibility:** the project intends to test Node.js 16.20 and later, but support will be claimed only for combinations verified before release. Maintained Node.js LTS versions will be recommended for production.
+- **Honest compatibility:** the MVP targets Node.js 18.18 and later. Supported framework/module combinations are claimed only after packed-tarball CI verification. Maintained Node.js LTS versions are recommended for production.
 
 ## Not Planned for v0.1
 

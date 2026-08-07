@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: ["16.20.x", 18.x, 20.x, 22.x, 24.x, 26.x]
+        node: [18.x, 20.x, 22.x, 24.x, 26.x]
     steps:
       - name: Check out source
         uses: actions/checkout@v4

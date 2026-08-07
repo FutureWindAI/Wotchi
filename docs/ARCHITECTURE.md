@@ -63,7 +63,7 @@ The Phase 3–6 local flow is implemented and tested. Capture performs bounded n
 
 - zero direct runtime dependencies in the MVP;
 - optional Express and NestJS peer dependencies;
-- Node.js `>=16.20.0` compatibility target;
+- Node.js `>=18.18.0` compatibility target;
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
 - no request/response bodies, raw headers, automatic environment collection, or hosted collector in v0.1;

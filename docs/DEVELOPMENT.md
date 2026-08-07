@@ -2,7 +2,7 @@
 
 ## Prerequisites
 
-Use a maintained Node.js LTS release for development. The package compatibility floor is Node.js `16.20.0`; the development toolchain itself may require a newer Node.js line.
+Use a maintained Node.js LTS release for development. The package compatibility floor is Node.js `18.18.0`.
 
 ## Install
 
