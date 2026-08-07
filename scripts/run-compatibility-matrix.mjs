@@ -112,7 +112,8 @@ try {
   packageFile = JSON.parse(packOutput)[0]?.filename;
 } catch {
   // npm 8 (used by Node.js 16) prints only the filename even with --json.
-  packageFile = packOutput.split(/\r?\n/).at(-1)?.trim();
+  const outputLines = packOutput.split(/\r?\n/);
+  packageFile = outputLines[outputLines.length - 1]?.trim();
 }
 if (typeof packageFile !== "string") {
   throw new Error("npm pack did not return a tarball filename");
