@@ -4,7 +4,7 @@
 
 Wotchi is a lightweight incident assistant for Node.js applications. It is intended to help small teams turn repeated Express and NestJS application errors into a small number of useful console or Telegram alerts without operating a separate monitoring stack.
 
-> **Project status:** Phases 1–6 are implemented locally: bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, and opt-in crash observation. Broader runtime-matrix CI and npm publication remain deferred.
+> **Project status:** Phases 1–7 are implemented and verified: bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, opt-in crash observation, security gates, performance budgets, and Node.js 18–26 packed-tarball CI. npm publication remains deferred.
 
 The working package name is `@futurewindai/wotchi`. Product-name, trademark, and competing-product clearance must be completed before the first public package release. Do not install similarly named packages expecting this project.
 

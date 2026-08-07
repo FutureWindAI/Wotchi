@@ -31,6 +31,6 @@ node scripts/run-compatibility-matrix.mjs --framework core --module commonjs
 
 The hosted CI workflow runs the full matrix on Node.js 18, 20, 22, 24, and 26. A local registry or DNS failure is inconclusive and must not be recorded as a compatibility failure or a pass.
 
-## Not yet claimed
+## Hosted CI evidence
 
-Node.js 18, 20, 22, 24, and 26 jobs, plus every ESM/CommonJS and framework-major combination, still require clean packed-tarball CI verification. Until those jobs pass, documentation and release material must describe them as targets or compatibility-only checks rather than certified support.
+The latest hosted CI run passed the Node.js 18, 20, 22, 24, and 26 packed-tarball jobs, including the advertised ESM/CommonJS and framework-major combinations. The normal CI workflow also passed tests, package verification, npm audit, OSV-Scanner, Gitleaks, and queue/response-path benchmarks. Release claims should still be limited to this tested matrix; future Node.js lines require a new CI run before being advertised.
