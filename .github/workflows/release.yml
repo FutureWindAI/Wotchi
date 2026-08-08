@@ -1,0 +1,203 @@
+name: Wotchi staged npm release
+
+# This workflow is intentionally manual and stage-only. It never runs
+# `npm publish` or `npm stage approve`.
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing protected Git tag to release (for example v0.1.0-beta.1)"
+        required: true
+        default: v0.1.0-beta.1
+        type: string
+      dist_tag:
+        description: "npm distribution tag for the staged package"
+        required: true
+        default: beta
+        type: choice
+        options:
+          - beta
+          - latest
+
+permissions:
+  contents: read
+
+concurrency:
+  group: wotchi-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+env:
+  NODE_VERSION: 24.x
+  NPM_PACKAGE: "@futurewindai/wotchi"
+  NPM_REGISTRY: "https://registry.npmjs.org"
+
+jobs:
+  release-gates:
+    name: Release gates
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node.js ${{ env.NODE_VERSION }}
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Verify tag, package version, and clean checkout
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          DIST_TAG: ${{ inputs.dist_tag }}
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]; then
+            echo "Invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+
+          expected_version="${RELEASE_TAG#v}"
+          actual_version="$(node -p "require('./package.json').version")"
+          if [[ "$actual_version" != "$expected_version" ]]; then
+            echo "Tag $RELEASE_TAG does not match package version $actual_version" >&2
+            exit 1
+          fi
+
+          if [[ "$DIST_TAG" == "latest" && "$actual_version" == *-* ]]; then
+            echo "A prerelease version cannot be staged with the latest dist-tag" >&2
+            exit 1
+          fi
+
+          if [[ -n "$(git status --porcelain)" ]]; then
+            echo "The checked-out release tag is not clean" >&2
+            git status --short >&2
+            exit 1
+          fi
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build
+
+      - name: npm audit
+        run: npm run security:audit
+
+      - name: Verify package contents and size
+        run: npm run verify:package
+
+      - name: Verify packed consumer exports
+        run: npm run test:compat
+
+      - name: Run performance gates
+        run: |
+          npm run benchmark
+          npm run benchmark:queue
+
+      - name: Save the exact release tarball for review
+        run: |
+          mkdir -p release-artifact
+          npm pack --pack-destination release-artifact --json > release-artifact/pack.json
+
+      - name: Upload release artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: wotchi-release-${{ inputs.tag }}
+          path: release-artifact/
+          if-no-files-found: error
+          retention-days: 14
+
+  osv:
+    name: OSV-Scanner
+    uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.5.0
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+
+  stage:
+    name: Stage package for maintainer review
+    needs: [release-gates, osv]
+    runs-on: ubuntu-latest
+    environment:
+      name: release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v6
+        with:
+          ref: ${{ inputs.tag }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Use Node.js ${{ env.NODE_VERSION }} without package-manager caching
+        uses: actions/setup-node@v6
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          registry-url: ${{ env.NPM_REGISTRY }}
+          package-manager-cache: false
+
+      - name: Use npm staged-publishing CLI
+        run: |
+          npm install --global npm@11.15.0
+          npm --version
+
+      - name: Install locked dependencies
+        run: npm ci
+
+      - name: Confirm the package is bootstrapped
+        run: |
+          if ! npm view "$NPM_PACKAGE" version --registry="$NPM_REGISTRY" >/dev/null 2>&1; then
+            echo "$NPM_PACKAGE is not published yet. Bootstrap the first beta manually with owner approval before using staged publishing." >&2
+            exit 1
+          fi
+
+      - name: Confirm staged package metadata
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          expected_version="${RELEASE_TAG#v}"
+          actual_version="$(node -p "require('./package.json').version")"
+          [[ "$actual_version" == "$expected_version" ]]
+          [[ "$(node -p "require('./package.json').name")" == "$NPM_PACKAGE" ]]
+          [[ "$(node -p "require('./package.json').license")" == "Apache-2.0" ]]
+
+      - name: Download the gate artifact for maintainer inspection
+        uses: actions/download-artifact@v4
+        with:
+          name: wotchi-release-${{ inputs.tag }}
+          path: release-artifact
+
+      - name: Stage package with npm trusted publishing
+        run: npm stage publish --tag "${{ inputs.dist_tag }}" --registry "$NPM_REGISTRY"
+
+      - name: Write approval instructions
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          {
+            echo "### Wotchi package staged"
+            echo
+            echo "Tag: $RELEASE_TAG"
+            echo "npm tag: ${{ inputs.dist_tag }}"
+            echo "The workflow did not run npm publish or npm stage approve."
+            echo
+            echo 'Review with `npm stage list @futurewindai/wotchi`, then approve with 2FA using `npm stage approve <stage-id>`.'
+          } >> "$GITHUB_STEP_SUMMARY"

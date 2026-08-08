@@ -4,9 +4,9 @@
 
 Wotchi is a lightweight incident assistant for Node.js applications. It is intended to help small teams turn repeated Express and NestJS application errors into a small number of useful console or Telegram alerts without operating a separate monitoring stack.
 
-> **Project status:** Phases 1–7 are implemented and verified: bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, opt-in crash observation, security gates, performance budgets, and Node.js 18–26 packed-tarball CI. npm publication remains deferred.
+> **Project status:** Private beta candidate (`0.1.0-beta.1`). Phases 1–8 are implemented and locally validated, including bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, opt-in crash observation, security gates, performance budgets, packed-tarball examples, and Node.js 18–26 CI. The source repository is public; the npm package is not published yet.
 
-The working package name is `@futurewindai/wotchi`. Product-name, trademark, and competing-product clearance must be completed before the first public package release. Do not install similarly named packages expecting this project.
+The working package name is `@futurewindai/wotchi`. The founder accepted the documented Wotchi trademark risk for the beta release on 2026-08-08; this is not legal clearance. The package remains unpublished until the exact release snapshot and gates are verified.
 
 ## Planned v0.1 Scope
 
@@ -115,6 +115,10 @@ A token-based hosted demo viewer is a separate possible future milestone, not pa
 ## Project Documents
 
 - [Architecture and package boundaries](docs/ARCHITECTURE.md)
+- [Setup](docs/SETUP.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Testing and smoke validation](docs/TESTING.md)
+- [Security and privacy notes](docs/SECURITY.md)
 - [Development workflow](docs/DEVELOPMENT.md)
 - [Security policy](SECURITY.md)
 - [Contributing guide](CONTRIBUTING.md)

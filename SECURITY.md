@@ -2,9 +2,9 @@
 
 ## Supported Versions
 
-Wotchi is currently pre-release. Phase 1 targets consumers running Node.js `>=16.20.0`; the package is built and tested on a current maintained Node.js line. Node.js 16 is a compatibility target, not a production security recommendation after its upstream support period.
+Wotchi is currently pre-release. The package targets consumers running Node.js `>=18.18.0` and is built and tested across the maintained Node.js 18–26 matrix. Node.js versions below 18.18 are not supported.
 
-The current pre-release package contains the framework-independent capture core, console and Telegram notifiers, Express 4/5 middleware, NestJS 10/11 exception-filter integration, and opt-in process monitoring. The package has not been published to npm. Supported runtime and framework combinations will be declared only after the complete multi-Node compatibility and release-security gates pass.
+The current pre-release package contains the framework-independent capture core, console and Telegram notifiers, Express 4/5 middleware, NestJS 10/11 exception-filter integration, and opt-in process monitoring. The package has not been published to npm. Supported runtime and framework combinations are documented only after the packed-tarball compatibility and release-security gates pass.
 
 ## Reporting a Vulnerability
 

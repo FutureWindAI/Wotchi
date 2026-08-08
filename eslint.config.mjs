@@ -9,6 +9,8 @@ export default tseslint.config(
       "node_modules/**",
       ".local/**",
       ".test_stands/**",
+      "examples/**/dist/**",
+      "examples/**/node_modules/**",
       ".idea/**",
     ],
   },
@@ -47,6 +49,25 @@ export default tseslint.config(
         console: "readonly",
         process: "readonly",
       },
+    },
+  },
+  {
+    files: ["examples/**/*.ts"],
+    languageOptions: {
+      globals: {
+        console: "readonly",
+        process: "readonly",
+      },
+    },
+    rules: {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+        },
+      ],
     },
   },
 );
