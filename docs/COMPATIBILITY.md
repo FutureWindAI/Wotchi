@@ -4,7 +4,7 @@ The package declares Node.js `>=18.18.0` and keeps framework dependencies option
 
 ## Verified locally
 
-The ignored `.test_stands/` matrix uses the packed build output and exercised the public adapters with real loopback requests:
+The local compatibility matrix uses the packed build output and exercises the public adapters with real loopback requests. Its fixture applications and generated dependencies remain local-only:
 
 | Runtime family                           | Framework | Result                                                            |
 | ---------------------------------------- | --------- | ----------------------------------------------------------------- |

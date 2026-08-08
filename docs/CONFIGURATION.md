@@ -62,3 +62,12 @@ telegramNotifier({
 
 The application owner must create the bot, start or add it to the destination chat, and keep both
 values outside source control. See [Security](SECURITY.md).
+
+## Related documentation
+
+- [API reference](API.md) — public functions and client methods.
+- [Troubleshooting](TROUBLESHOOTING.md) — thresholds, queue saturation, logger coexistence, and Telegram checks.
+- [Security and privacy](SECURITY.md) — data handling boundaries.
+
+For a safe first test, use the console notifier before enabling an external notifier; see
+[examples](EXAMPLES.md).

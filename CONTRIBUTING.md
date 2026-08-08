@@ -37,3 +37,14 @@ Performance and compatibility-matrix commands are required when the relevant cha
 Keep each pull request focused. Explain the user problem, scope, security and performance impact, and verification performed. Public claims must describe implemented and tested behavior only.
 
 By submitting a contribution, you agree that it is licensed under the repository's [Apache License 2.0](LICENSE).
+
+## Support and issue routing
+
+Search the [documentation index](docs/README.md), [FAQ](docs/FAQ.md), and
+[troubleshooting guide](docs/TROUBLESHOOTING.md) before opening a request. When GitHub Discussions
+is enabled, use it for general usage questions and design discussion. Use an issue for a
+reproducible bug or a narrowly scoped feature request. Use [SECURITY.md](SECURITY.md) for
+vulnerabilities; never publish credentials, private keys, production URLs, customer payloads, or
+proprietary source.
+
+There is no response-time SLA. Maintainer availability may vary.

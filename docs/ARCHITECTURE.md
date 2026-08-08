@@ -49,6 +49,18 @@ capture -> normalize -> redact -> fingerprint -> group
         -> policy -> bounded queue -> console/Telegram notifier
 ```
 
+```mermaid
+flowchart LR
+  A[Capture] --> B[Normalize]
+  B --> C[Redact]
+  C --> D[Fingerprint]
+  D --> E[Bounded group store]
+  E --> F[Threshold and cooldown policy]
+  F --> G[Bounded notification queue]
+  G --> H[Console notifier]
+  G --> I[Telegram notifier]
+```
+
 Capture performs bounded normalization, redaction, fingerprinting, grouping, policy evaluation, incident construction, and queue admission synchronously. Queue work runs with concurrency one and is never awaited by framework error handling. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
 
 ## Package build
