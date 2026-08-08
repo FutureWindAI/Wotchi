@@ -1,30 +1,11 @@
-# Wotchi release and npm publication procedure (no auto-publication)
+# Wotchi release process
 
-Wotchi `0.1.0-beta.1` is published under the npm `beta` tag. The founder accepted the documented
-Wotchi trademark risk on 2026-08-08; this is not legal clearance. Later releases remain protected
-and owner-approved.
-All npm mutation steps require explicit owner approval. CI builds and audits must never publish automatically.
+Wotchi releases use semantic versioning, reviewed artifacts, and explicit maintainer approval. CI
+builds and audits do not publish automatically.
 
-## 0) Ownership preconditions
+## 1) Release checklist
 
-Before any release workflow is prepared or run:
-
-- Confirm package identity:
-  - npm scope ownership: `@futurewindai`
-  - package: `@futurewindai/wotchi`
-  - repository: dedicated public `wotchi` repo inside the approved GitHub organization
-  - license: `Apache-2.0`
-- Confirm `PROJECT STATUS`: `npm`/`name`/`license`/`repo` references are consistent with
-  `docs/NPM_AND_OPEN_SOURCE_RELEASE_FLOW.md`.
-- Confirm npm organization ownership from an approved npm account before proceeding.
-- Confirm `npm` two-factor authentication (2FA) is enabled for human owners.
-- Confirm the documented name/trademark risk acceptance is up to date; do not describe it as legal clearance.
-
-## 1) Step-8 release procedure artifact checks (before publishing)
-
-### 1.1 Pre-release gates (required and repeatable)
-
-On a clean checkout, run:
+On a clean checkout, update the version and changelog, then run:
 
 ```bash
 npm ci
@@ -48,7 +29,7 @@ cat /tmp/wotchi-release/*.tgz
 
 Do not use a dirty checkout for release commands.
 
-### 1.2 Tarball and changelog evidence
+### 1.1 Tarball and changelog review
 
 - Verify tarball contains only approved compiled output and docs.
 - Verify changelog entry exists for the release version.
@@ -57,37 +38,15 @@ Do not use a dirty checkout for release commands.
   - `engines.node` supports runtime promise
   - files allowlist
 
-## 2) First-public-beta bootstrap path (manual, one-time)
+## 2) Trusted publishing
 
-The first public release may require owner-driven manual publish because trusted publisher requires existing package metadata.
-
-Required before execution:
-
-- All gates in section 1 complete on the exact intended commit.
-- Tag points to the exact checked-out tree: `v0.1.0-beta.1` (example).
-
-Mutating command (owner-approved):
-
-```bash
-npm publish --access public --tag beta
-```
-
-After bootstrap, record:
-
-- npm package page URL
-- first public install proof (`npm view @futurewindai/wotchi` and clean install test)
-
-No CI step may run this command without explicit release approval.
-
-## 3) Later release path: stage-only trusted publishing
-
-After bootstrap, use trusted publishing/OIDC from GitHub Actions:
+Use npm trusted publishing/OIDC from GitHub Actions for releases:
 
 - Workflow reads from the tagged commit only.
 - Build/test checks remain in place.
 - Workflow produces and stages artifacts.
-- Maintainers review staged artifact before approval.
-- Publication occurs only after maintainer approval with npm 2FA.
+- Maintainers review the staged artifact before approval.
+- Publication occurs only after maintainer approval.
 
 Required workflow permissions:
 
@@ -95,19 +54,19 @@ Required workflow permissions:
 - `id-token: write`
 - release-protection environment with required reviewer
 
-## 3.1) Phase 9 stage-only GitHub Actions workflow
+## 2.1) GitHub Actions workflow
 
 The repository workflow is `.github/workflows/release.yml`. It is deliberately manual:
 
 ```bash
 gh workflow run release.yml \
   --ref main \
-  -f tag=v0.1.0-beta.1 \
+  -f tag=vX.Y.Z \
   -f dist_tag=beta
 ```
 
-Before using it, the owner must configure the GitHub `release` environment with a required
-maintainer reviewer and configure npm trusted publishing for:
+Configure the GitHub `release` environment with a required maintainer reviewer and configure npm
+trusted publishing for:
 
 - GitHub organization: `FutureWindAI`
 - repository: `Wotchi`
@@ -116,9 +75,8 @@ maintainer reviewer and configure npm trusted publishing for:
 - allowed action: `npm stage publish` only
 
 The workflow checks out the exact tag, verifies its version and clean state, runs the release gates,
-uploads the packed tarball for review, and then stages the package through npm OIDC. It does not run
-`npm publish` or `npm stage approve`. Staging is unavailable until the first beta package has been
-bootstrapped manually through the separate owner-approved procedure above.
+uploads the packed tarball for review, and stages the package through npm OIDC. It does not run
+`npm publish` or `npm stage approve`.
 
 After a successful staging run, the maintainer reviews and approves outside GitHub Actions:
 
@@ -129,9 +87,9 @@ npm stage download <stage-id>
 npm stage approve <stage-id>
 ```
 
-The final command is a public registry mutation and requires explicit owner approval with 2FA.
+The final command is a public registry mutation and requires explicit maintainer approval.
 
-## 4) Provenance, versions, tags, and rollbacks
+## 3) Provenance, versions, tags, and rollbacks
 
 - Use semantic versioning with clear prerelease tags:
   - Beta: `0.1.0-beta.1` with `beta`
@@ -143,7 +101,7 @@ The final command is a public registry mutation and requires explicit owner appr
   - publish fixed version with notes
   - post GitHub release note and changelog correction
 
-## 5) Release notes and compatibility artifacts
+## 4) Release notes and compatibility artifacts
 
 Attach to each release:
 
@@ -152,17 +110,14 @@ Attach to each release:
 - redaction/security notes
 - known limitations and upgrade notes
 
-## 6) Approval gates and safety policy (hard requirements)
+## 5) Approval gates and safety policy
 
-- Any npm publication command is owner approval-only.
+- Any npm publication command is maintainer approval-only.
 - No long-lived npm write token in files or CI secrets.
 - No publication from a dirty tree.
-- No staged artifact publication without:
-  - maintainer review
-  - owner confirmation
-  - npm 2FA check for publish action
+- No staged artifact publication without maintainer review and explicit approval.
 
-## 7) Dist-tags
+## 6) Dist-tags
 
 | Release type | Dist tag | Example version |
 | ------------ | -------- | --------------- |
@@ -172,8 +127,8 @@ Attach to each release:
 The first npm publication also exposed `latest` at the beta version because no stable version
 existed. Install the prerelease explicitly with `@beta` until a stable release moves `latest`.
 
-## 8) Non-goals for pre-release preparation
+## 7) Release hygiene
 
 - No Telegram tokens, passwords, database credentials, or customer data in release tooling.
-- No public-source push or publication without the recorded owner approval for the exact snapshot and package version.
-- No production installs during pre-release approval.
+- No source push or publication from a dirty checkout.
+- Do not use production credentials or customer data during release validation.

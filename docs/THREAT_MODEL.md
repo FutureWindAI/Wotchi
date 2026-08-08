@@ -1,6 +1,6 @@
 # Wotchi threat model
 
-This document describes the security boundary for the pre-release Wotchi SDK. It is an engineering model, not a security certification.
+This document describes the security boundary for the Wotchi SDK. It is an engineering model, not a security certification.
 
 ## Assets
 
@@ -18,7 +18,7 @@ This document describes the security boundary for the pre-release Wotchi SDK. It
 4. Console output remains local; Telegram alerts cross the host-to-Telegram HTTPS boundary.
 5. GitHub Actions builds the package; npm distributes the packed artifact.
 
-Wotchi has no hosted backend, database, AI provider, or persistent incident store in the MVP.
+Wotchi has no hosted backend, database, AI provider, or persistent incident store in the current release.
 
 ## Threats and mitigations
 
@@ -42,7 +42,7 @@ Wotchi has no hosted backend, database, AI provider, or persistent incident stor
 - Queue, group, traversal, payload, and stack limits must remain finite and tested.
 - No secret belongs in source, fixtures, documentation, Git history, npm archives, or CI logs.
 
-## Out of scope for the MVP
+## Out of scope for the current release
 
 - Authentication or authorization for a hosted dashboard.
 - Multi-tenant isolation.

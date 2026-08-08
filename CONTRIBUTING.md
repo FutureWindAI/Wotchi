@@ -1,10 +1,10 @@
 # Contributing to Wotchi
 
-Wotchi is a pre-release project. Issues, design feedback, documentation improvements, and carefully scoped contributions are welcome.
+Issues, design feedback, documentation improvements, and carefully scoped contributions are welcome.
 
 ## Start with Scope
 
-The planned first release is a small in-process incident assistant for Node.js, Express, and NestJS with console and Telegram notification. Discuss substantial changes in an issue before implementation. Features such as a hosted platform, dashboard, AI integration, extra notifiers, infrastructure collectors, or automatic remediation require a separate product decision.
+The current release is a small in-process incident assistant for Node.js, Express, and NestJS with console and Telegram notification. Discuss substantial changes in an issue before implementation. Features such as a hosted platform, dashboard, AI integration, extra notifiers, infrastructure collectors, or automatic remediation require a separate product decision.
 
 ## Safety and Privacy
 
@@ -30,7 +30,7 @@ npm run security:all
 npm pack --dry-run --json
 ```
 
-Performance and compatibility-matrix commands become required when their later implementation phases add those harnesses.
+Performance and compatibility-matrix commands are required when the relevant changes affect those harnesses.
 
 ## Pull Requests
 

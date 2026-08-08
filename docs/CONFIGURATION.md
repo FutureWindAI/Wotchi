@@ -27,7 +27,7 @@ application starts sending events; configuration errors do not echo supplied tok
 | `privacy.maxStringLength`     |    `500` | Maximum retained string length.                      |
 | `privacy.maxStackLength`      |   `4000` | Maximum retained stack length.                       |
 
-The queue has concurrency `1` in the MVP. When the queue is full, new notification work is dropped
+The queue has concurrency `1` in the current release. When the queue is full, new notification work is dropped
 and the host request is not delayed. `getDiagnostics()` exposes counters for dropped work and
 notifier failures.
 

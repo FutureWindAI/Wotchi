@@ -10,7 +10,7 @@ Use a maintained Node.js LTS release for development. The package compatibility 
 npm ci
 ```
 
-The lockfile is authoritative. Do not install packages outside the approved dependency list without updating the product plan and security review.
+The lockfile is authoritative. Keep dependency additions small, documented, and reviewed for security and runtime impact.
 
 ## Local test stands
 
@@ -25,8 +25,6 @@ npm run stand -- express 4
 ```
 
 The launcher accepts only those server/version combinations, builds Wotchi first, prints the stand's local endpoints plus one-error and grouped-error commands, and then runs the stand's existing `start` script. For `nest 11`, it also starts the ignored local PostgreSQL/Redis fixture services, creates `.env.local`, applies Prisma, and installs the packed SDK automatically. Install a stand's dependencies once from its directory when needed, for example `cd .test_stands/nest-v11 && npm install --no-audit --no-fund`.
-
-The detailed local/agent workflow is kept in the private `.local/TEST_STAND_WORKFLOW.md` file.
 
 ## Quality commands
 
@@ -53,21 +51,16 @@ npm run build && node scripts/run-compatibility-matrix.mjs --framework core --mo
 
 For behavior changes, write one focused failing test, run it and confirm the expected failure, implement the smallest change, then rerun the focused test and the full applicable checks. Configuration-only files are the exception to the test-first rule.
 
-## Phase boundaries
-
-Phase 1 owns package metadata, build configuration, public types, exports, and documentation. Phase 2 owns safe configuration validation, bounded normalization, redaction, stack-frame selection, and fingerprinting. Phase 3 owns bounded grouping, threshold/cooldown policy, deterministic alerts, diagnostics, queueing, and console output. Phase 4 owns the Express error middleware; Phase 5 owns the NestJS delegating exception filter; Phase 6 owns Telegram HTTP and opt-in process monitoring. The package is still pre-release; do not publish it.
-
 ## Repository hygiene
 
 Before a commit, inspect the complete staged file list. The following are local or generated and must stay out of Git and npm archives:
 
-- `.local/`
 - `.idea/`
 - `.test_stands/`
 - `node_modules/`
 - `dist/`
 - `.test-dist/`
-- build source maps (excluded from the MVP package archive)
+- build source maps (excluded from the package archive)
 - `.env` files and logs
 
 Never use real customer errors, production URLs, tokens, or credentials in tests or documentation.

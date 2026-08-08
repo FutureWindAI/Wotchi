@@ -1,6 +1,6 @@
 # Wotchi security and privacy notes
 
-Wotchi is designed to observe failures without becoming a log collector. The MVP has no hosted
+Wotchi is designed to observe failures without becoming a log collector. The current release has no hosted
 control plane, persistent event database, or automatic environment scraping.
 
 ## Data flow

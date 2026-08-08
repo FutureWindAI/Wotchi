@@ -7,7 +7,7 @@ events in bounded memory, and sends sanitized incident alerts to the configured 
 
 - Node.js `18.18.0` or later
 - An Express 4/5 or NestJS 10/11 application when using a framework adapter
-- No database, collector, account, or AI provider for the MVP
+- No database, collector, account, or AI provider is required
 
 ## Install
 
@@ -76,8 +76,8 @@ npm install
 npm start
 ```
 
-For local development before the package is published, build Wotchi and install the generated
-tarball in the example instead:
+For local development against the source tree, build Wotchi and install the generated tarball in
+the example instead:
 
 ```bash
 cd ../..

@@ -1,15 +1,26 @@
 # IDE metadata
 .idea/
 
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+.npmrc
+
 # Private machine-local context (do not commit)
 .local/
+.claude/
+.codex/
 
 # Agent instructions stay local to the development workspace
 /AGENTS.md
 /CLAUDE.md
+/WARP.md
 
 # Manual local smoke test stands (not committed)
 .test_stands/
 .test-dist/
 dist/
 node_modules/
+*.tgz
+npm-debug.log*

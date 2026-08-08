@@ -4,11 +4,11 @@
 
 Wotchi is a lightweight incident assistant for Node.js applications. It is intended to help small teams turn repeated Express and NestJS application errors into a small number of useful console or Telegram alerts without operating a separate monitoring stack.
 
-> **Project status:** Public beta (`0.1.0-beta.1`, npm `beta` tag). Phases 1–8 are implemented and validated, including bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, opt-in crash observation, security gates, performance budgets, packed-tarball examples, and Node.js 18–26 CI.
+> **Project status:** Public beta (`0.1.0-beta.1`, npm `beta` tag). The beta includes bounded incident processing, console and Telegram alerts, Express 4/5 middleware, NestJS 10/11 exception-filter integration, opt-in process monitoring, security checks, performance benchmarks, packed-tarball examples, and Node.js 18–26 CI.
 
-The package is `@futurewindai/wotchi`. The founder accepted the documented Wotchi trademark risk for the beta release on 2026-08-08; this is not legal clearance. Install the beta with `npm install @futurewindai/wotchi@beta` and review the documented compatibility, security, and performance limits before use.
+Install the beta with `npm install @futurewindai/wotchi@beta`. Review the compatibility, security, and performance documentation before using it in production.
 
-## Planned v0.1 Scope
+## Included
 
 - one framework-independent TypeScript core;
 - focused integrations for Express 4/5 and NestJS 10/11;
@@ -98,19 +98,17 @@ The default policy emits after three matching errors in one minute and suppresse
 - **Host safety:** Wotchi must not break, suppress, or materially delay the application's normal error flow.
 - **Bounded overhead:** memory, payloads, groups, and queued notifications must all have explicit limits.
 - **Privacy first:** request bodies, response bodies, raw headers, and arbitrary environment variables are outside the first release.
-- **Deterministic first:** the MVP must work without an AI provider, database, hosted account, or collector.
-- **Honest compatibility:** the MVP targets Node.js 18.18 and later. Supported framework/module combinations are claimed only after packed-tarball CI verification. Maintained Node.js LTS versions are recommended for production.
+- **Deterministic first:** the current release works without an AI provider, database, hosted account, or collector.
+- **Honest compatibility:** the current release targets Node.js 18.18 and later. Supported framework/module combinations are claimed only after packed-tarball CI verification. Maintained Node.js LTS versions are recommended for production.
 
-## Not Planned for v0.1
+## Out of scope for this release
 
 - a full observability, APM, or log-management platform;
 - a hosted dashboard, collector, or persistent incident history;
 - AI-generated summaries;
 - Slack, Discord, email, or generic webhook notifiers;
-- logger transports, Docker collectors, Kubernetes agents, or Helm charts in the npm SDK itself; a separate future collector/relay deployment may receive its own Docker and Helm milestone;
+- logger transports, Docker collectors, Kubernetes agents, or Helm charts in the npm SDK itself;
 - automatic remediation.
-
-A token-based hosted demo viewer is a separate possible future milestone, not part of the package MVP.
 
 ## Project Documents
 
@@ -125,4 +123,4 @@ A token-based hosted demo viewer is a separate possible future milestone, not pa
 - [Changelog](CHANGELOG.md)
 - [Apache License 2.0](LICENSE)
 
-Wotchi is an early open-source project from FutureWind AI. Contributions and product feedback should stay within the documented scope and avoid real secrets or customer error data.
+Wotchi is an open-source project maintained by FutureWind AI. Contributions and product feedback should stay within the documented scope and avoid real secrets or customer error data.

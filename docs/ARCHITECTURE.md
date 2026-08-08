@@ -2,7 +2,7 @@
 
 ## Current status
 
-Phase 1 established the installable package boundary. Phase 2 added the safe-input primitives: configuration validation, bounded normalization, redaction, application-frame selection, and SHA-256 fingerprints. Phase 3 wires those primitives into bounded grouping, threshold/cooldown policy, deterministic incident construction, a serial notification queue, diagnostics, and the console notifier. Phase 4 adds pass-through Express error middleware, Phase 5 adds a delegating NestJS exception filter, and Phase 6 adds bounded Telegram delivery plus opt-in process monitoring. npm publication remains a later release gate.
+Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The current package provides bounded input handling, redaction, fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction, diagnostics, serial notification queueing, console and Telegram notifiers, and opt-in process monitoring.
 
 ## Consumer-facing package shape
 
@@ -42,14 +42,14 @@ src/
   integrations/nest/index.ts      NestJS-only public boundary
 ```
 
-Later phases add behavior behind these contracts:
+Future changes should add behavior behind these contracts:
 
 ```text
 capture -> normalize -> redact -> fingerprint -> group
         -> policy -> bounded queue -> console/Telegram notifier
 ```
 
-The Phase 3–6 local flow is implemented and tested. Capture performs bounded normalization, redaction, fingerprinting, grouping, policy evaluation, incident construction, and queue admission synchronously. Queue work runs with concurrency one and is never awaited by framework error handling. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
+Capture performs bounded normalization, redaction, fingerprinting, grouping, policy evaluation, incident construction, and queue admission synchronously. Queue work runs with concurrency one and is never awaited by framework error handling. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
 
 ## Package build
 
@@ -61,12 +61,12 @@ The Phase 3–6 local flow is implemented and tested. Capture performs bounded n
 
 ## Product constraints
 
-- zero direct runtime dependencies in the MVP;
+- zero direct runtime dependencies in the current release;
 - optional Express and NestJS peer dependencies;
 - Node.js `>=18.18.0` compatibility target;
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
 - no request/response bodies, raw headers, automatic environment collection, or hosted collector in v0.1;
-- console and Telegram are the only MVP notification channels.
+- console and Telegram are the only notification channels in the current release.
 
-See the private `.local/PRODUCT_PLAN.md` for the complete product and threat model. It is intentionally not part of the public repository.
+See [Security](SECURITY.md) and [Threat model](THREAT_MODEL.md) for the security boundary and residual risks.

@@ -1,6 +1,6 @@
 # Wotchi performance evidence
 
-The release gates are defined in the private product plan: capture p95 `<1 ms`, capture p99 `<2 ms`, duplicate-storm heap delta `<10 MiB`, unique-storm heap delta `<20 MiB`, and packed tarball `<=150 KB`.
+The benchmark targets are capture p95 `<1 ms`, capture p99 `<2 ms`, duplicate-storm heap delta `<10 MiB`, unique-storm heap delta `<20 MiB`, and a packed tarball `<=150 KB`.
 
 Run the reproducible local benchmark after a build:
 
