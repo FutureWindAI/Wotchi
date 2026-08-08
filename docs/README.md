@@ -26,5 +26,5 @@ supports Express 4/5, NestJS 10/11, console alerts, and optional Telegram delive
 - [Contributing](../CONTRIBUTING.md) — scope, support, and pull-request expectations.
 - [Changelog](../CHANGELOG.md) — released changes.
 
-The current public version is `0.1.0-beta.1`. Use `npm install @futurewindai/wotchi@beta` until a
+The current public version is `0.1.0-beta.2`. Use `npm install @futurewindai/wotchi@beta` until a
 stable release moves the `latest` dist-tag.
