@@ -128,3 +128,37 @@ test("NestJS status observer captures selected direct HTTP responses", async () 
     await app.close();
   }
 });
+
+test("NestJS exception capture suppresses the matching status observer event", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "nest-status-dedup-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+  const app = await NestFactory.create(TestModule, { logger: false });
+  registerWotchiNestStatusObserver(app, client, {
+    statusCodes: [],
+    statusClasses: ["5xx"],
+  });
+  registerWotchiNest(app, client);
+  await app.listen(0, "127.0.0.1");
+  const server = app.getHttpServer() as http.Server;
+
+  try {
+    const response = await request(server, "/generic-error");
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.summary.includes("nest generic failure"), true);
+  } finally {
+    await app.close();
+  }
+});

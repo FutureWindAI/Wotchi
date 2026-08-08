@@ -1,6 +1,7 @@
 import { Catch, type ArgumentsHost, type HttpServer } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
 import type { WotchiClient } from "../../core/types.js";
+import { markExpressErrorCaptured } from "../express/state.js";
 import { getNestRequestContext, type NestWotchiOptions } from "./request-context.js";
 
 @Catch()
@@ -14,6 +15,11 @@ export class WotchiNestExceptionFilter extends BaseExceptionFilter<unknown> {
   }
 
   public override catch(exception: unknown, host: ArgumentsHost): void {
+    try {
+      markExpressErrorCaptured(host.switchToHttp().getRequest());
+    } catch {
+      // Non-HTTP NestJS contexts do not expose an Express request to mark.
+    }
     try {
       this.client.captureException(exception, getNestRequestContext(host, exception, this.options));
     } catch {

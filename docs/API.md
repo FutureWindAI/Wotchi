@@ -95,7 +95,8 @@ not read bodies or headers. Its default selection is `401`, `403`, `429`, and `5
 `statusCodes`, `statusClasses`, or `ignoreStatusCodes` for the host application's traffic. An
 optional `alertThreshold` applies only to events created by this observer; otherwise the client's
 normal grouping threshold is used. Register it before routes so direct responses from middleware
-are visible. The error handler marks thrown errors so a `5xx` response is not reported twice.
+are visible. The Express error handler and NestJS exception filter mark captured errors so a `5xx`
+response is not reported twice.
 For thresholds above `grouping.maxEventsPerWindow`, increase that bounded client limit as well.
 
 The Express subpath also exports the `WotchiStatusClass` and `WotchiStatusObserverOptions` types.
