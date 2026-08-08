@@ -92,6 +92,16 @@ const safeMessage = (
   return typeof normalized === "string" ? normalized : "[unreadable value]";
 };
 
+const normalizeEventAlertThreshold = (value: number | undefined): number | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!Number.isSafeInteger(value) || value <= 0 || value > 1_000_000) {
+    throw new TypeError("event.alertThreshold must be a positive integer no greater than 1000000");
+  }
+  return value;
+};
+
 export function createWotchi(config: WotchiConfig): WotchiClient {
   const normalized = validateConfig(config);
   const now = Date.now;
@@ -115,6 +125,7 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     context: unknown,
     request: unknown,
     eventKind: IncidentEventKind = "error",
+    alertThreshold = normalized.grouping.alertThreshold,
   ): void => {
     const timestamp = now();
     const safeError = redactError(normalizeError(error, privacy), privacy);
@@ -137,7 +148,7 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     const decision = evaluateIncidentPolicy({
       group,
       now: timestamp,
-      alertThreshold: normalized.grouping.alertThreshold,
+      alertThreshold,
       cooldownMs: normalized.grouping.cooldownMs,
       eventKind,
     });
@@ -172,12 +183,14 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
       if (typeof event.message !== "string") {
         throw new TypeError("event.message must be a string");
       }
+      const alertThreshold = normalizeEventAlertThreshold(event.alertThreshold);
       captureSafeEvent(
         event.error ?? safeMessage(event.message, privacy),
         event.metadata,
         event.context,
         event.request,
         event.kind ?? "error",
+        alertThreshold ?? normalized.grouping.alertThreshold,
       );
     } catch {
       diagnostics.captureFailures += 1;

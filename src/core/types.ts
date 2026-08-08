@@ -13,6 +13,7 @@ export interface WotchiEventInput {
   kind?: WotchiEventKind;
   message: string;
   error?: unknown;
+  alertThreshold?: number;
   metadata?: Record<string, unknown>;
   context?: Record<string, unknown>;
   request?: WotchiRequestContext;
@@ -66,6 +67,7 @@ export interface WotchiNotifier {
 
 export interface ConsoleNotifierOptions {
   write?: (line: string) => void;
+  format?: "text" | "json";
 }
 
 export interface TelegramNotifierOptions {

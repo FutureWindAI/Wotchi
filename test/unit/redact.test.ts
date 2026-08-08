@@ -80,3 +80,36 @@ test("preserves ordinary text and applies a bounded output length", () => {
   assert.equal(typeof result.long, "string");
   assert.equal((result.long as string).length <= 100, true);
 });
+
+test("redacts credentials embedded in supported connection URLs", () => {
+  const values = [
+    "postgres://db-user:postgres-password@db.internal:5432/orders",
+    "postgresql://db-user:postgres-password@db.internal:5432/orders?sslmode=require",
+    "redis://default:redis-password@cache.internal:6379/0",
+    "rediss://default:redis-password@cache.internal:6380/0",
+    "mongodb://mongo-user:mongo-password@db.internal:27017/orders",
+    "mongodb+srv://mongo-user:mongo-password@cluster.example/orders",
+  ];
+
+  const output = JSON.stringify(redactValue({ values }));
+
+  for (const secret of ["postgres-password", "redis-password", "mongo-password"]) {
+    assert.equal(output.includes(secret), false, `${secret} was not redacted`);
+  }
+  assert.equal(output.includes("db.internal"), true);
+  assert.equal(output.includes(REDACTED), true);
+});
+
+test("redacts connection URL query credentials and encoded passwords", () => {
+  const output = JSON.stringify(
+    redactValue({
+      postgres:
+        "postgres://user:p%40ssword@db.internal:5432/orders?password=query-password&sslpassword=ssl-password",
+      redis: "redis://cache.internal:6379/0?token=query-token",
+    }),
+  );
+
+  for (const secret of ["p%40ssword", "query-password", "ssl-password", "query-token"]) {
+    assert.equal(output.includes(secret), false, `${secret} was not redacted`);
+  }
+});

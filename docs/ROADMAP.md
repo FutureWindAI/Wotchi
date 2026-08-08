@@ -3,6 +3,17 @@
 This roadmap describes possible direction, not a promise or a release schedule. Current behavior
 is limited to the published package and its documentation.
 
+## Planning windows
+
+These are non-binding planning windows, not release promises. Each release remains subject to
+security, compatibility, performance, package, and maintainer-approval gates.
+
+| Window       | Focus                                                                                                                                            | Exit signal                                                                               |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------- |
+| Aug–Sep 2026 | Beta hardening: URL-aware redaction, direct HTTP status observation, JSON console output, CommonJS declaration checks, and worker documentation. | A reviewed immutable beta artifact passes the release gates.                              |
+| Q4 2026      | Stable-readiness review: API feedback, compatibility evidence, security review, and operational documentation.                                   | Maintainers decide whether the API and evidence justify a stable release.                 |
+| 2027+        | Separate design work for additional notifiers, collector/relay delivery, and optional AI-assisted wording.                                       | An approved design defines trust boundaries, resource budgets, and maintenance ownership. |
+
 ## Current beta
 
 - Bounded in-process error capture and grouping

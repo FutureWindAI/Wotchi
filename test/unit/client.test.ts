@@ -113,3 +113,32 @@ test("notifier failures do not escape the capture path", async () => {
   assert.equal(client.getDiagnostics().notifierFailures, 1);
   assert.equal(client.getDiagnostics().alertsSent, 0);
 });
+
+test("redacts connection URL credentials before fingerprinting, grouping, and notification", async () => {
+  const alerts: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      alerts.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "orders-api",
+    environment: "production",
+    notifiers: [notifier],
+    grouping: { alertThreshold: 2 },
+  });
+
+  client.captureException(
+    new Error("database unavailable: postgres://user:first-password@db.internal:5432/orders"),
+  );
+  client.captureException(
+    new Error("database unavailable: postgres://user:second-password@db.internal:5432/orders"),
+  );
+  await client.flush();
+
+  assert.equal(alerts.length, 1);
+  assert.equal(alerts[0]?.occurrences, 2);
+  assert.equal(alerts[0]?.summary.includes("first-password"), false);
+  assert.equal(alerts[0]?.summary.includes("second-password"), false);
+});

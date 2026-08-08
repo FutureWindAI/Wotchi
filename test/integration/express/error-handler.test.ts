@@ -3,10 +3,25 @@ import { once } from "node:events";
 import http from "node:http";
 import test from "node:test";
 import express from "express";
-import type { ErrorRequestHandler } from "express";
+import type { ErrorRequestHandler, RequestHandler } from "express";
 import { createWotchi } from "../../../src/index.js";
-import { wotchiErrorHandler } from "../../../src/integrations/express/index.js";
+import * as expressIntegration from "../../../src/integrations/express/index.js";
 import type { IncidentAlert, WotchiClient, WotchiNotifier } from "../../../src/index.js";
+
+const wotchiErrorHandler = expressIntegration.wotchiErrorHandler;
+const wotchiStatusObserver = (
+  expressIntegration as unknown as {
+    wotchiStatusObserver: (
+      client: WotchiClient,
+      options?: {
+        statusCodes?: readonly number[];
+        statusClasses?: readonly string[];
+        ignoreStatusCodes?: readonly number[];
+        alertThreshold?: number;
+      },
+    ) => RequestHandler;
+  }
+).wotchiStatusObserver;
 
 const request = (server: http.Server, path: string): Promise<{ status: number; body: string }> =>
   new Promise((resolve, reject) => {
@@ -86,6 +101,136 @@ test("Express middleware captures and passes the original error to the existing 
   } finally {
     await close(server);
   }
+});
+
+test("Express status observer captures selected direct HTTP responses", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "express-status-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+  const app = express();
+  app.use(wotchiStatusObserver(client, { statusCodes: [401], statusClasses: [] }));
+  app.get("/private", (_request, response) => {
+    response.status(401).json({ error: "missing-auth" });
+  });
+
+  const server = await listen(app);
+  try {
+    const response = await request(server, "/private");
+    await client.flush();
+    assert.equal(response.status, 401);
+    assert.equal(response.body, '{"error":"missing-auth"}');
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.summary.includes("HTTP 401"), true);
+  } finally {
+    await close(server);
+  }
+});
+
+test("Express status observer supports ignored statuses and a per-status threshold", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "express-status-policy-test",
+    environment: "test",
+    notifiers: [notifier],
+  });
+  const app = express();
+  app.use(
+    wotchiStatusObserver(client, {
+      statusCodes: [429],
+      statusClasses: [],
+      ignoreStatusCodes: [],
+      alertThreshold: 2,
+    }),
+  );
+  app.get("/rate-limit", (_request, response) => {
+    response.status(429).json({ error: "rate-limited" });
+  });
+
+  const server = await listen(app);
+  try {
+    await request(server, "/rate-limit");
+    await request(server, "/rate-limit");
+    await client.flush();
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.occurrences, 2);
+  } finally {
+    await close(server);
+  }
+});
+
+test("Express status observer can ignore a noisy status", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "express-status-ignore-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+  const app = express();
+  app.use(
+    wotchiStatusObserver(client, {
+      statusCodes: [429],
+      statusClasses: [],
+      ignoreStatusCodes: [429],
+    }),
+  );
+  app.get("/rate-limit", (_request, response) => {
+    response.status(429).end();
+  });
+
+  const server = await listen(app);
+  try {
+    const response = await request(server, "/rate-limit");
+    await client.flush();
+    assert.equal(response.status, 429);
+    assert.equal(captured.length, 0);
+  } finally {
+    await close(server);
+  }
+});
+
+test("Express status observer rejects unbounded policy options", () => {
+  const client = createWotchi({
+    service: "express-status-validation-test",
+    environment: "test",
+    notifiers: [consoleNotifierForValidation()],
+  });
+
+  assert.throws(
+    () => wotchiStatusObserver(client, { statusCodes: [600] }),
+    /statusCodes must contain HTTP status codes/,
+  );
+  assert.throws(
+    () => wotchiStatusObserver(client, { alertThreshold: 1_000_001 }),
+    /alertThreshold must be a positive integer/,
+  );
+});
+
+const consoleNotifierForValidation = (): WotchiNotifier => ({
+  name: "validation",
+  async send(): Promise<void> {},
 });
 
 void (null as unknown as WotchiClient);

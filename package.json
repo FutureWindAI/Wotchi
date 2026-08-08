@@ -34,17 +34,26 @@
   "types": "./dist/types/index.d.ts",
   "exports": {
     ".": {
-      "types": "./dist/types/index.d.ts",
+      "types": {
+        "import": "./dist/types/index.d.ts",
+        "require": "./dist/types-cjs/index.d.cts"
+      },
       "import": "./dist/esm/index.js",
       "require": "./dist/cjs/index.js"
     },
     "./express": {
-      "types": "./dist/types/integrations/express/index.d.ts",
+      "types": {
+        "import": "./dist/types/integrations/express/index.d.ts",
+        "require": "./dist/types-cjs/integrations/express/index.d.cts"
+      },
       "import": "./dist/esm/integrations/express/index.js",
       "require": "./dist/cjs/integrations/express/index.js"
     },
     "./nest": {
-      "types": "./dist/types/integrations/nest/index.d.ts",
+      "types": {
+        "import": "./dist/types/integrations/nest/index.d.ts",
+        "require": "./dist/types-cjs/integrations/nest/index.d.cts"
+      },
       "import": "./dist/esm/integrations/nest/index.js",
       "require": "./dist/cjs/integrations/nest/index.js"
     }

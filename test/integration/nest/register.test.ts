@@ -2,10 +2,13 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
-import { Controller, Get, HttpException, Module } from "@nestjs/common";
+import { Controller, Get, HttpCode, HttpException, Module } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { createWotchi } from "../../../src/index.js";
-import { registerWotchiNest } from "../../../src/integrations/nest/index.js";
+import {
+  registerWotchiNest,
+  registerWotchiNestStatusObserver,
+} from "../../../src/integrations/nest/index.js";
 import type { IncidentAlert, WotchiNotifier } from "../../../src/index.js";
 
 const request = (server: http.Server, path: string): Promise<{ status: number; body: string }> =>
@@ -34,6 +37,12 @@ const request = (server: http.Server, path: string): Promise<{ status: number; b
 
 @Controller()
 class TestController {
+  @Get("/unauthorized")
+  @HttpCode(401)
+  unauthorized(): { error: string } {
+    return { error: "missing-auth" };
+  }
+
   @Get("/http-error/:id")
   httpError(): never {
     throw new HttpException({ message: "nest route failed", error: "Teapot" }, 418);
@@ -84,6 +93,37 @@ test("NestJS filter captures errors and preserves framework responses", async ()
       captured.some((alert) => alert.summary.includes("do-not-capture")),
       false,
     );
+  } finally {
+    await app.close();
+  }
+});
+
+test("NestJS status observer captures selected direct HTTP responses", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "nest-status-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+  const app = await NestFactory.create(TestModule, { logger: false });
+  registerWotchiNestStatusObserver(app, client, { statusCodes: [401], statusClasses: [] });
+  await app.listen(0, "127.0.0.1");
+  const server = app.getHttpServer() as http.Server;
+
+  try {
+    const response = await request(server, "/unauthorized");
+    await client.flush();
+    assert.equal(response.status, 401);
+    assert.deepEqual(JSON.parse(response.body), { error: "missing-auth" });
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.summary.includes("HTTP 401"), true);
   } finally {
     await app.close();
   }

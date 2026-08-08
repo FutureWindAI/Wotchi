@@ -67,3 +67,27 @@ when a service needs an explicit boundary instead of framework middleware.
 
 See the [API reference](API.md) for public imports and [configuration](CONFIGURATION.md) for
 grouping and notifier defaults.
+
+## Background workers and queues
+
+Wotchi can observe failures in queue processors, cron jobs, and other non-HTTP code through
+`captureException`. Keep the host worker's retry and acknowledgement flow unchanged:
+
+```ts
+async function processJob(job: { type: string }) {
+  try {
+    await executeJob(job);
+  } catch (error) {
+    wotchi.captureException(error, {
+      operation: "orders.process-job",
+      jobType: job.type,
+    });
+    throw error;
+  }
+}
+```
+
+Wotchi records a bounded, sanitized incident and returns immediately. It does not acknowledge
+the job, schedule retries, or store the payload. Avoid putting full job payloads, credentials, or
+customer data in the context. Use `await wotchi.flush()` only when the process is intentionally
+shutting down and pending notifier delivery must be drained.

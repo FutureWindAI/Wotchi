@@ -34,16 +34,51 @@ await wotchi.flush();
 
 The example uses a threshold of one so the alert is visible immediately. The default policy groups three matching errors in one minute and suppresses duplicate alerts during the cooldown. Capture is synchronous; call `flush()` when the host needs to wait for notifier work.
 
+Example console output:
+
+```text
+Wotchi — Medium incident
+Service: orders-api
+Environment: development
+Summary: Observed 1 occurrences of Error: database query failed.
+Occurrences: 1
+First seen: 2026-08-08T12:00:00.000Z
+Last seen: 2026-08-08T12:00:00.000Z
+Suggested checks:
+- Check database availability, connection saturation, and recent schema changes.
+- Check the affected query and its dependency health before increasing capacity.
+```
+
+Timestamps and the fingerprint vary for each run. The alert is sanitized before it reaches a
+notifier.
+
 ## What you get
 
-| Capability                              | Result                                                                  |
-| --------------------------------------- | ----------------------------------------------------------------------- |
-| Bounded capture and queueing            | Repeated failures cannot create unbounded in-memory work.               |
-| Redaction before processing             | Sensitive values are removed before grouping, logging, or transmission. |
-| Grouping and cooldowns                  | Repeated failures produce a small number of useful alerts.              |
-| Express 4/5 and NestJS 10/11 adapters   | Errors are observed while the framework keeps response ownership.       |
-| ESM, CommonJS, and TypeScript types     | Use the package with common Node.js module setups.                      |
-| Console and optional Telegram notifiers | Start locally or self-host delivery without a Wotchi control plane.     |
+| Capability                                | Result                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------- |
+| Bounded capture and queueing              | Repeated failures cannot create unbounded in-memory work.                          |
+| Redaction before processing               | Sensitive values are removed before grouping, logging, or transmission.            |
+| Grouping and cooldowns                    | Repeated failures produce a small number of useful alerts.                         |
+| Express 4/5 and NestJS 10/11 adapters     | Errors are observed while the framework keeps response ownership.                  |
+| ESM, CommonJS, and TypeScript types       | Use the package with common Node.js module setups.                                 |
+| Console and optional Telegram notifiers   | Start locally or self-host delivery without a Wotchi control plane.                |
+| Optional status observation and JSON logs | Observe direct `401`/`403`/`429`/`5xx` responses and emit collector-friendly JSON. |
+
+## How it works
+
+```mermaid
+flowchart LR
+  A[Application error] --> B[Normalize and redact]
+  B --> C[Stable fingerprint]
+  C --> D[Threshold and cooldown]
+  D --> E[Bounded queue]
+  E --> F[Console]
+  E --> G[Telegram]
+```
+
+The same bounded capture path can be called from HTTP handlers, background workers, and queue
+processors. Wotchi does not replace the host application's response, retry, or acknowledgement
+logic.
 
 ## Framework integrations
 
@@ -94,7 +129,7 @@ const wotchi = createWotchi({
 });
 ```
 
-Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md) for notifier and security options.
+Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](docs/CONFIGURATION.md) for notifier and security options.
 
 ## Process monitoring
 
@@ -118,25 +153,25 @@ const monitor = registerWotchiProcessMonitor(wotchi);
 
 ## Documentation
 
-- [Getting started](https://github.com/FutureWindAI/Wotchi/blob/main/docs/GETTING_STARTED.md)
-- [Examples](https://github.com/FutureWindAI/Wotchi/blob/main/docs/EXAMPLES.md)
-- [API reference](https://github.com/FutureWindAI/Wotchi/blob/main/docs/API.md)
-- [Configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md)
-- [Compatibility](https://github.com/FutureWindAI/Wotchi/blob/main/docs/COMPATIBILITY.md)
-- [Performance](https://github.com/FutureWindAI/Wotchi/blob/main/docs/PERFORMANCE.md)
-- [Architecture](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ARCHITECTURE.md)
-- [Roadmap](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ROADMAP.md)
-- [Troubleshooting](https://github.com/FutureWindAI/Wotchi/blob/main/docs/TROUBLESHOOTING.md)
-- [FAQ](https://github.com/FutureWindAI/Wotchi/blob/main/docs/FAQ.md)
-- [Security and privacy](https://github.com/FutureWindAI/Wotchi/blob/main/docs/SECURITY.md)
-- [Threat model](https://github.com/FutureWindAI/Wotchi/blob/main/docs/THREAT_MODEL.md)
-- [Contributing](https://github.com/FutureWindAI/Wotchi/blob/main/CONTRIBUTING.md)
-- [Changelog](https://github.com/FutureWindAI/Wotchi/blob/main/CHANGELOG.md)
+- [Getting started](docs/GETTING_STARTED.md)
+- [Examples](docs/EXAMPLES.md)
+- [API reference](docs/API.md)
+- [Configuration](docs/CONFIGURATION.md)
+- [Compatibility](docs/COMPATIBILITY.md)
+- [Performance](docs/PERFORMANCE.md)
+- [Architecture](docs/ARCHITECTURE.md)
+- [Roadmap](docs/ROADMAP.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md)
+- [FAQ](docs/FAQ.md)
+- [Security and privacy](docs/SECURITY.md)
+- [Threat model](docs/THREAT_MODEL.md)
+- [Contributing](CONTRIBUTING.md)
+- [Changelog](CHANGELOG.md)
 - [GitHub releases](https://github.com/FutureWindAI/Wotchi/releases)
-- [Apache License 2.0](https://github.com/FutureWindAI/Wotchi/blob/main/LICENSE)
+- [Apache License 2.0](LICENSE)
 
 ## Security
 
-Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using [SECURITY.md](https://github.com/FutureWindAI/Wotchi/blob/main/SECURITY.md).
+Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using [SECURITY.md](SECURITY.md).
 
 Wotchi is open source and maintained by FutureWind AI.

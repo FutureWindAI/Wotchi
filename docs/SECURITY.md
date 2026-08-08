@@ -7,7 +7,8 @@ control plane, persistent event database, or automatic environment scraping.
 
 1. The integration receives an error and a small request context.
 2. Unknown values are normalized with depth, key, string, and stack limits.
-3. Credential-shaped fields and configured sensitive keys are redacted.
+3. Credential-shaped fields, connection URL userinfo/query credentials, and configured sensitive
+   keys are redacted.
 4. The sanitized event is fingerprinted and retained only in bounded in-memory groups.
 5. A deterministic alert is queued for the configured notifier.
 
@@ -28,6 +29,12 @@ error object.
 Notifier work is asynchronous and bounded so a slow or failing notifier does not replace the
 application's response behavior. Queue overflow drops notification work and records a diagnostic
 counter. The process monitor is opt-in and never converts an observed crash into a successful exit.
+
+Connection URLs for PostgreSQL, Redis, and MongoDB are sanitized before fingerprinting, grouping,
+logging, and notifier delivery. The URL host is retained when possible for diagnosis, while
+userinfo and credential-shaped query values are replaced with `[REDACTED]`. Applications should
+still avoid placing full connection strings in error messages and should configure their primary
+logger's redaction independently.
 
 See [Threat model](THREAT_MODEL.md) for assets, trust boundaries, mitigations, and residual risks.
 To report a vulnerability, follow the private-reporting guidance in the repository

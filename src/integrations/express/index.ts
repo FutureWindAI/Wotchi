@@ -20,6 +20,8 @@ export type {
 } from "../../index.js";
 
 export type { ExpressWotchiOptions } from "./request-context.js";
+export type { WotchiStatusClass, WotchiStatusObserverOptions } from "./status-observer.js";
+export { wotchiStatusObserver } from "./status-observer.js";
 
 export function wotchiErrorHandler(
   client: WotchiClient,

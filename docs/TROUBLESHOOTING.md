@@ -12,11 +12,44 @@ for i in 1 2 3; do curl -sS -i http://127.0.0.1:3000/failure; done
 Different fingerprints, an expired window, or a cooldown can also prevent a new alert. Inspect
 `wotchi.getDiagnostics()` in a local test when you need queue and grouping counters.
 
+## Numeric IDs are grouped together
+
+The default fingerprint intentionally replaces numeric, UUID-like, and hexadecimal dynamic values
+with stable placeholders. This prevents one incident per user ID, order ID, or database key. If two
+numeric cases must be separate, distinguish them with an error name, message, route, or application
+stack frame; metadata alone does not change the fingerprint.
+
 ## Express responses changed
 
 Register `wotchiErrorHandler(wotchi)` after routes and before the existing final error handler.
 Wotchi should be the observing middleware, not the response owner. Keep the host final handler after
 it and confirm the handler calls `next(error)` exactly once.
+
+## Background worker failures are not visible
+
+HTTP adapters do not observe queue processors or cron jobs. Catch failures at the worker boundary,
+call `wotchi.captureException(error, safeContext)`, and rethrow so the existing retry or
+acknowledgement logic continues. Wotchi does not own job lifecycle decisions and does not wait for
+notifier delivery in the worker path. See the [worker example](EXAMPLES.md#background-workers-and-queues).
+
+## Direct 401, 403, or 429 responses are not visible
+
+Authentication and rate-limit middleware may send a response without calling `next(error)`. Add
+the opt-in status observer before routes:
+
+```ts
+app.use(
+  wotchiStatusObserver(wotchi, {
+    statusCodes: [401, 403, 429],
+    statusClasses: ["5xx"],
+    ignoreStatusCodes: [429],
+  }),
+);
+```
+
+Use `ignoreStatusCodes` for known-noisy responses. Use the observer's `alertThreshold` when a
+status should alert only after a larger burst; it does not change thresholds for ordinary captured
+errors. The observer records status and safe route metadata only, never bodies or headers.
 
 ## NestJS responses changed
 

@@ -65,8 +65,40 @@ const redactCardLikeValues = (value: string): string =>
     return digits.length >= 13 && digits.length <= 19 && luhnValid(digits) ? REDACTED : candidate;
   });
 
+const CONNECTION_URL_PATTERN = /\b(?:postgres(?:ql)?|rediss?|mongodb(?:\+srv)?):\/\/[^\s"'<>]+/gi;
+const CONNECTION_QUERY_SECRET_PATTERN =
+  /([?&](?:password|passwd|pass|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|sslpassword)=)[^&#\s]*/gi;
+const URL_TRAILING_PUNCTUATION = /[),.;!?]+$/;
+
+const redactConnectionUrl = (candidate: string): string => {
+  let core = candidate;
+  let suffix = "";
+  while (URL_TRAILING_PUNCTUATION.test(core)) {
+    suffix = `${core.slice(-1)}${suffix}`;
+    core = core.slice(0, -1);
+  }
+
+  const schemeEnd = core.indexOf("://");
+  if (schemeEnd < 0) {
+    return candidate;
+  }
+  const authorityStart = schemeEnd + 3;
+  const authorityOffset = core.slice(authorityStart).search(/[/?#]/);
+  const authorityEnd = authorityOffset < 0 ? core.length : authorityStart + authorityOffset;
+  const authority = core.slice(authorityStart, authorityEnd);
+  const atIndex = authority.lastIndexOf("@");
+  const redactedAuthority = atIndex < 0 ? authority : `${REDACTED}@${authority.slice(atIndex + 1)}`;
+  const remainder = core
+    .slice(authorityEnd)
+    .replace(CONNECTION_QUERY_SECRET_PATTERN, `$1${REDACTED}`);
+  return `${core.slice(0, authorityStart)}${redactedAuthority}${remainder}${suffix}`;
+};
+
+const redactConnectionUrls = (value: string): string =>
+  value.replace(CONNECTION_URL_PATTERN, redactConnectionUrl);
+
 const redactString = (value: string, maxStringLength: number): string => {
-  let result = value;
+  let result = redactConnectionUrls(value);
   result = result.replace(
     /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/gi,
     REDACTED,
@@ -74,7 +106,10 @@ const redactString = (value: string, maxStringLength: number): string => {
   result = result.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED}`);
   result = result.replace(
     /\b(?:authorization|password|passwd|secret|token|api[-_]?key)\s*[:=]\s*[^\s,;]+/gi,
-    (match) => `${match.slice(0, match.search(/[:=]/))}: ${REDACTED}`,
+    (match) => {
+      const separatorIndex = match.search(/[:=]/);
+      return separatorIndex < 0 ? REDACTED : `${match.slice(0, separatorIndex + 1)}${REDACTED}`;
+    },
   );
   result = result.replace(
     /\b[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,

@@ -13,7 +13,10 @@ The local compatibility matrix uses the packed build output and exercises the pu
 | Current development runtime (`v22.14.0`) | NestJS 10 | passed: framework response preservation and grouped console alert |
 | Current development runtime (`v22.14.0`) | NestJS 11 | passed: framework response preservation and grouped console alert |
 
-The package export smoke tests also cover ESM/CommonJS root, `/express`, and `/nest` paths. Root and Express imports are checked not to load NestJS runtime modules.
+The package export smoke tests also cover ESM/CommonJS root, `/express`, and `/nest` paths,
+including the status-observer exports. TypeScript consumer compilation checks both ESM declarations
+and CommonJS `require` declarations. Root and Express imports are checked not to load NestJS runtime
+modules.
 
 ## CI matrix harness
 

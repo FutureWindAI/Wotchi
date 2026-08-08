@@ -1,5 +1,5 @@
 export { consoleNotifier, createWotchi, telegramNotifier } from "../../index.js";
-export { registerWotchiNest } from "./register.js";
+export { registerWotchiNest, registerWotchiNestStatusObserver } from "./register.js";
 
 export type {
   ConsoleNotifierOptions,
@@ -17,3 +17,4 @@ export type {
 } from "../../index.js";
 
 export type { NestWotchiApplication, NestWotchiOptions } from "./register.js";
+export type { WotchiStatusClass, WotchiStatusObserverOptions } from "../express/status-observer.js";
