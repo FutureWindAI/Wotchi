@@ -1,8 +1,8 @@
 # Wotchi release and npm publication procedure (no auto-publication)
 
-Wotchi remains a pre-release beta candidate until the exact source snapshot and package
-publication are verified. The founder accepted the documented Wotchi trademark risk on
-2026-08-08; this is not legal clearance.
+Wotchi `0.1.0-beta.1` is published under the npm `beta` tag. The founder accepted the documented
+Wotchi trademark risk on 2026-08-08; this is not legal clearance. Later releases remain protected
+and owner-approved.
 All npm mutation steps require explicit owner approval. CI builds and audits must never publish automatically.
 
 ## 0) Ownership preconditions
@@ -168,6 +168,9 @@ Attach to each release:
 | ------------ | -------- | --------------- |
 | Beta         | `beta`   | `0.1.0-beta.1`  |
 | Stable       | `latest` | `0.1.0`         |
+
+The first npm publication also exposed `latest` at the beta version because no stable version
+existed. Install the prerelease explicitly with `@beta` until a stable release moves `latest`.
 
 ## 8) Non-goals for pre-release preparation
 
