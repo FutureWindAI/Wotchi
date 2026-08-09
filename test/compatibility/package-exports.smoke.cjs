@@ -7,8 +7,10 @@ const nest = require("@futurewindai/wotchi/nest");
 assert.equal(typeof root.createWotchi, "function");
 assert.equal(typeof root.consoleNotifier, "function");
 assert.equal(typeof root.telegramNotifier, "function");
+assert.equal(typeof root.webhookNotifier, "function");
 assert.equal(typeof express.wotchiErrorHandler, "function");
 assert.equal(typeof express.wotchiStatusObserver, "function");
+assert.equal(typeof express.webhookNotifier, "function");
 assert.equal(typeof nest.registerWotchiNest, "function");
 assert.equal(typeof nest.registerWotchiNestStatusObserver, "function");
 
@@ -19,8 +21,10 @@ assert.equal(typeof nest.registerWotchiNestStatusObserver, "function");
     import("@futurewindai/wotchi/nest"),
   ]);
   assert.equal(typeof esmRoot.createWotchi, "function");
+  assert.equal(typeof esmRoot.webhookNotifier, "function");
   assert.equal(typeof esmExpress.wotchiErrorHandler, "function");
   assert.equal(typeof esmExpress.wotchiStatusObserver, "function");
+  assert.equal(typeof esmExpress.webhookNotifier, "function");
   assert.equal(typeof esmNest.registerWotchiNest, "function");
   assert.equal(typeof esmNest.registerWotchiNestStatusObserver, "function");
 })().catch((error) => {

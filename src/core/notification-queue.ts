@@ -6,8 +6,17 @@ export interface NotificationQueueOptions {
   onNotifierError?: (error: unknown, notifier: WotchiNotifier) => void;
 }
 
+export interface NotificationJobResult {
+  notifierFailures: number;
+  sent: number;
+}
+
 export interface NotificationQueue {
-  enqueue(alert: IncidentAlert, notifiers: readonly WotchiNotifier[]): boolean;
+  enqueue(
+    alert: IncidentAlert,
+    notifiers: readonly WotchiNotifier[],
+    onComplete?: (result: NotificationJobResult) => void,
+  ): boolean;
   flush(timeoutMs?: number): Promise<void>;
   pending(): number;
   alertsQueued(): number;
@@ -19,6 +28,7 @@ export interface NotificationQueue {
 interface NotificationJob {
   alert: IncidentAlert;
   notifiers: readonly WotchiNotifier[];
+  onComplete?: (result: NotificationJobResult) => void;
 }
 
 const DEFAULT_FLUSH_TIMEOUT_MS = 5_000;
@@ -59,13 +69,22 @@ export function createNotificationQueue(options: NotificationQueueOptions): Noti
   };
 
   const processJob = async (job: NotificationJob): Promise<void> => {
+    let jobSent = 0;
+    let jobFailures = 0;
     for (const notifier of job.notifiers) {
       try {
         await notifier.send(job.alert);
         sent += 1;
+        jobSent += 1;
       } catch (error: unknown) {
+        jobFailures += 1;
         notifyFailure(error, notifier);
       }
+    }
+    try {
+      job.onComplete?.({ notifierFailures: jobFailures, sent: jobSent });
+    } catch {
+      // Job observers cannot be allowed to affect notification processing.
     }
   };
 
@@ -84,12 +103,20 @@ export function createNotificationQueue(options: NotificationQueueOptions): Noti
     }
   };
 
-  const enqueue = (alert: IncidentAlert, notifiers: readonly WotchiNotifier[]): boolean => {
+  const enqueue = (
+    alert: IncidentAlert,
+    notifiers: readonly WotchiNotifier[],
+    onComplete?: (result: NotificationJobResult) => void,
+  ): boolean => {
     if (pendingJobs.length >= options.maxPendingAlerts) {
       dropped += 1;
       return false;
     }
-    pendingJobs.push({ alert, notifiers: [...notifiers] });
+    pendingJobs.push({
+      alert,
+      notifiers: [...notifiers],
+      ...(onComplete === undefined ? {} : { onComplete }),
+    });
     queued += 1;
     pump();
     return true;

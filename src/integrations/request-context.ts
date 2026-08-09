@@ -1,11 +1,14 @@
-import type { WotchiRequestContext } from "../core/types.js";
+import type { WotchiRequestContext, WotchiTraceContext } from "../core/types.js";
 
 export interface RequestContextOptions {
   requestIdProperty?: string;
+  correlationIdProperty?: string;
+  traceContextProperty?: string;
 }
 
 const MAX_ROUTE_LENGTH = 500;
 const MAX_REQUEST_ID_LENGTH = 200;
+const MAX_CORRELATION_ID_LENGTH = 200;
 const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 const HEX_PATTERN = /^[0-9a-f]{8,}$/i;
 
@@ -41,6 +44,26 @@ const normalizeRequestIdProperty = (property: string | undefined): string | unde
   return property;
 };
 
+const normalizeTraceContextProperty = (property: string | undefined): string | undefined => {
+  if (property === undefined) {
+    return undefined;
+  }
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property)) {
+    throw new TypeError("traceContextProperty must be a simple property name");
+  }
+  return property;
+};
+
+const normalizeCorrelationIdProperty = (property: string | undefined): string | undefined => {
+  if (property === undefined) {
+    return undefined;
+  }
+  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property)) {
+    throw new TypeError("correlationIdProperty must be a simple property name");
+  }
+  return property;
+};
+
 const readRequestId = (request: unknown, property: string | undefined): string | undefined => {
   if (property === undefined || !isRecord(request)) {
     return undefined;
@@ -56,21 +79,84 @@ const readRequestId = (request: unknown, property: string | undefined): string |
   }
 };
 
+const readTraceContext = (
+  request: unknown,
+  property: string | undefined,
+): WotchiTraceContext | undefined => {
+  if (property === undefined || !isRecord(request)) {
+    return undefined;
+  }
+  try {
+    if (!Object.prototype.hasOwnProperty.call(request, property)) {
+      return undefined;
+    }
+    const value = request[property];
+    if (!isRecord(value)) {
+      return undefined;
+    }
+    const traceId = typeof value.traceId === "string" ? value.traceId.slice(0, 128) : undefined;
+    const spanId = typeof value.spanId === "string" ? value.spanId.slice(0, 128) : undefined;
+    if (traceId === undefined && spanId === undefined) {
+      return undefined;
+    }
+    return {
+      ...(traceId === undefined ? {} : { traceId }),
+      ...(spanId === undefined ? {} : { spanId }),
+    };
+  } catch {
+    return undefined;
+  }
+};
+
+const readCorrelationId = (request: unknown, property: string | undefined): string | undefined => {
+  if (property === undefined || !isRecord(request)) {
+    return undefined;
+  }
+  try {
+    if (!Object.prototype.hasOwnProperty.call(request, property)) {
+      return undefined;
+    }
+    const value = request[property];
+    return typeof value === "string" ? value.slice(0, MAX_CORRELATION_ID_LENGTH) : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 export interface RequestContextInput {
   request?: unknown;
   method?: unknown;
   route?: unknown;
   statusCode?: unknown;
+  trace?: unknown;
   options?: RequestContextOptions;
 }
 
 export function buildRequestContext(input: RequestContextInput): WotchiRequestContext | undefined {
   const requestIdProperty = normalizeRequestIdProperty(input.options?.requestIdProperty);
+  const correlationIdProperty = normalizeCorrelationIdProperty(
+    input.options?.correlationIdProperty,
+  );
+  const traceContextProperty = normalizeTraceContextProperty(input.options?.traceContextProperty);
   let requestId: string | undefined;
   try {
     requestId = readRequestId(input.request, requestIdProperty);
   } catch {
     requestId = undefined;
+  }
+  let correlationId: string | undefined;
+  try {
+    correlationId = readCorrelationId(input.request, correlationIdProperty);
+  } catch {
+    correlationId = undefined;
+  }
+  let trace: WotchiTraceContext | undefined;
+  try {
+    const explicitTrace = input.trace;
+    trace = readTraceContext({ trace: explicitTrace }, "trace");
+    trace ??= readTraceContext(input.request, traceContextProperty);
+  } catch {
+    trace = undefined;
   }
   const method = typeof input.method === "string" ? input.method.slice(0, 16) : undefined;
   const route = normalizeRoutePath(input.route);
@@ -82,7 +168,9 @@ export function buildRequestContext(input: RequestContextInput): WotchiRequestCo
     method === undefined &&
     route === undefined &&
     statusCode === undefined &&
-    requestId === undefined
+    requestId === undefined &&
+    correlationId === undefined &&
+    trace === undefined
   ) {
     return undefined;
   }
@@ -91,5 +179,7 @@ export function buildRequestContext(input: RequestContextInput): WotchiRequestCo
     ...(route === undefined ? {} : { route }),
     ...(statusCode === undefined ? {} : { statusCode }),
     ...(requestId === undefined ? {} : { requestId }),
+    ...(correlationId === undefined ? {} : { correlationId }),
+    ...(trace === undefined ? {} : { trace }),
   };
 }

@@ -1,7 +1,7 @@
 {
   "name": "@futurewindai/wotchi",
   "version": "0.1.0-beta.2",
-  "description": "Bounded incident alerts for Node.js, Express, and NestJS applications",
+  "description": "Low-noise error alerts for Node.js, Express, and NestJS applications",
   "keywords": [
     "nodejs",
     "typescript",
@@ -11,7 +11,8 @@
     "incident-management",
     "alerting",
     "observability",
-    "telegram"
+    "telegram",
+    "webhook"
   ],
   "license": "Apache-2.0",
   "type": "module",
@@ -62,7 +63,7 @@
     "type": "git",
     "url": "git+ssh://git@github.com/FutureWindAI/Wotchi.git"
   },
-  "homepage": "https://www.npmjs.com/package/@futurewindai/wotchi",
+  "homepage": "https://github.com/FutureWindAI/Wotchi",
   "bugs": {
     "url": "https://github.com/FutureWindAI/Wotchi/issues"
   },
@@ -73,6 +74,7 @@
     "build:types": "tsc -p tsconfig.types.json",
     "build": "npm run clean && npm run build:esm && npm run build:cjs && npm run build:types && node scripts/prepare-package.mjs",
     "stand": "node scripts/start-test-stand.mjs",
+    "stand:production": "node scripts/start-nest-production-stand.mjs",
     "typecheck": "tsc -p tsconfig.base.json --noEmit",
     "lint": "eslint .",
     "format": "prettier --write .",

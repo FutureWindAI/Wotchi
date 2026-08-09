@@ -41,6 +41,8 @@ test("configuration validation applies bounded defaults and freezes the result",
   assert.equal(Object.isFrozen(normalized.queue), true);
   assert.equal(Object.isFrozen(normalized.privacy), true);
   assert.equal(Object.isFrozen(normalized.notifiers), true);
+  assert.deepEqual(normalized.rules, []);
+  assert.equal(Object.isFrozen(normalized.rules), true);
 });
 
 test("configuration rejects blank service and environment", () => {
@@ -97,5 +99,40 @@ test("configuration errors never echo token-like supplied values", () => {
       assert.equal((error as Error).message.includes(token), false);
       return true;
     },
+  );
+});
+
+test("configuration bounds event rules and validates safe callbacks", () => {
+  const normalized = validateConfig({
+    ...baseConfig(),
+    filter: () => true,
+    fingerprint: () => "stable",
+    beforeSend: (alert) => alert,
+    links: {
+      log: "https://logs.example.test/{{service}}",
+    },
+    rules: [{ environment: "production", route: "/health", alertThreshold: 2, severity: "low" }],
+  });
+
+  assert.deepEqual(normalized.rules, [
+    { environment: "production", route: "/health", alertThreshold: 2, severity: "low" },
+  ]);
+  assert.throws(
+    () => validateConfig({ ...baseConfig(), rules: [{ alertThreshold: 0 }] }),
+    WotchiConfigurationError,
+  );
+  assert.throws(
+    () => validateConfig({ ...baseConfig(), filter: "not-a-function" as never }),
+    WotchiConfigurationError,
+  );
+  assert.equal(Object.isFrozen(normalized.links), true);
+  assert.equal(normalized.links?.log, "https://logs.example.test/{{service}}");
+  assert.throws(
+    () =>
+      validateConfig({
+        ...baseConfig(),
+        links: { log: "https://logs.example.test/{{unknown}}" },
+      }),
+    WotchiConfigurationError,
   );
 });

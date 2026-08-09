@@ -59,3 +59,32 @@ test("console notifier defensively redacts connection URL credentials", async ()
   assert.equal(lines[0]?.includes("console-password"), false);
   assert.equal(lines[0]?.includes("[REDACTED]"), true);
 });
+
+test("console notifier includes bounded actionable context", async () => {
+  const lines: string[] = [];
+  const notifier = consoleNotifier({ write: (line: string) => lines.push(line) });
+
+  await notifier.send({
+    ...alert,
+    release: "2026.08.08",
+    instance: "orders-1",
+    error: {
+      name: "DatabaseError",
+      message: "query failed",
+      applicationFrame: "saveOrder (/app/orders.ts:42)",
+    },
+    request: {
+      method: "POST",
+      route: "/orders/:id",
+      statusCode: 500,
+      requestId: "request-1",
+    },
+    trace: { traceId: "trace-1", spanId: "span-1" },
+    context: { operation: "orders.save" },
+  });
+
+  assert.match(lines[0] ?? "", /Release: 2026\.08\.08/);
+  assert.match(lines[0] ?? "", /Application frame: saveOrder/);
+  assert.match(lines[0] ?? "", /Trace: trace-1 span span-1/);
+  assert.match(lines[0] ?? "", /orders\.save/);
+});

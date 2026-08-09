@@ -3,9 +3,12 @@
 This guide takes about five minutes and uses console delivery only. No account, database,
 collector, or external service is required.
 
+> **Release note:** The `testAlert()` and advanced options described in this source checkout are
+> unreleased additions. The published `0.1.0-beta.2` package exposes the beta API only.
+
 ## 1. Install the public beta
 
-Use a supported Node.js release (`>=18.18.0`):
+Use a supported Node.js release (`18`–`26`; Node.js 22 or 24 LTS is recommended for production):
 
 ```bash
 npm install @futurewindai/wotchi@beta
@@ -37,6 +40,10 @@ node wotchi-smoke.mjs
 
 The console output contains one sanitized incident alert. The threshold is set to one only to
 make this first check immediate; the default policy groups three matching errors in one minute.
+
+To validate a configured notifier without throwing an application error, use
+`const result = await wotchi.testAlert()` in a controlled environment and inspect
+`result.status`/`result.delivered`.
 
 ## 3. Attach an Express adapter
 
@@ -95,7 +102,7 @@ See the [NestJS example](EXAMPLES.md#nestjs-11) for a runnable application and t
 
 ## 5. Choose the next guide
 
-- [Configuration](CONFIGURATION.md) for thresholds, cooldowns, privacy, and Telegram.
+- [Configuration](CONFIGURATION.md) for thresholds, cooldowns, privacy, webhooks, and Telegram.
 - [API reference](API.md) for public imports and method contracts.
 - [Troubleshooting](TROUBLESHOOTING.md) if an expected alert does not appear.
 

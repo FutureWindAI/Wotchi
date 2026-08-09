@@ -3,6 +3,9 @@
 Wotchi is a small in-process incident-alerting SDK for Node.js applications. The public beta
 supports Express 4/5, NestJS 10/11, console alerts, and optional Telegram delivery.
 
+The source checkout also contains unreleased audit-hardening documentation for the next beta. Those
+sections must not be used as claims about the published `0.1.0-beta.2` package.
+
 ## Start here
 
 - [Getting started](GETTING_STARTED.md) — install the beta and trigger a first grouped alert.

@@ -51,3 +51,16 @@ test("Telegram formatter bounds long alerts and action count", () => {
   assert.equal(formatted.includes("action-0"), true);
   assert.equal(formatted.includes("action-6"), false);
 });
+
+test("Telegram formatter includes trace and request context", () => {
+  const formatted = formatTelegramAlert({
+    ...alert,
+    request: { method: "POST", route: "/orders/:id", statusCode: 500 },
+    trace: { traceId: "trace-1", spanId: "span-1" },
+    context: { operation: "orders.save" },
+  });
+
+  assert.match(formatted, /Request: POST \/orders\/:id status 500/);
+  assert.match(formatted, /Trace: trace-1 span span-1/);
+  assert.match(formatted, /orders\.save/);
+});

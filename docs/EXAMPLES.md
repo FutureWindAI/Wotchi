@@ -1,7 +1,12 @@
 # Examples
 
-The checked-in examples use the packed Wotchi package and console delivery. They are intentionally
-small and separate from the local-only compatibility fixtures.
+The Express and NestJS examples use the packed Wotchi package and console delivery. The production
+recipe at the end of this document targets unreleased source-revision APIs and is intentionally
+separate from the published beta examples and local-only compatibility fixtures.
+
+> **Release note:** Do not install the production recipe against the published `0.1.0-beta.2`
+> package. It becomes a released consumer example only after the next beta is approved and
+> published.
 
 ## Express 5
 
@@ -91,3 +96,18 @@ Wotchi records a bounded, sanitized incident and returns immediately. It does no
 the job, schedule retries, or store the payload. Avoid putting full job payloads, credentials, or
 customer data in the context. Use `await wotchi.flush()` only when the process is intentionally
 shutting down and pending notifier delivery must be drained.
+
+## Production recipe
+
+See [`examples/production-recipe`](../examples/production-recipe) for an unreleased source-revision
+Express 5 service that
+combines:
+
+- `/healthz` for an external uptime monitor;
+- console delivery plus an optional bounded HTTPS webhook;
+- explicit release and instance labels;
+- graceful `SIGTERM`/`SIGINT` shutdown with `wotchi.flush(3_000)`.
+
+The recipe fits Render, Railway, or Cloud Run, but it does not replace platform health checks or
+external uptime monitoring. Wotchi runs inside one process: replicas have independent grouping
+state, restarts reset cooldowns, and serverless termination can interrupt asynchronous delivery.

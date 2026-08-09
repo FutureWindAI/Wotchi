@@ -31,13 +31,9 @@ export function evaluateIncidentPolicy(input: IncidentPolicyInput): IncidentPoli
   const eventKind = input.eventKind ?? "error";
   const isCritical = eventKind === "process-monitor";
   const isHigh = input.group.windowCount >= 20 || hasUnavailableResponse(input.group);
-  const severity: IncidentSeverity = isCritical
-    ? "critical"
-    : isHigh
-      ? "high"
-      : eventKind === "manual"
-        ? (input.manualSeverity ?? "low")
-        : "medium";
+  const severity: IncidentSeverity =
+    input.manualSeverity ??
+    (isCritical ? "critical" : isHigh ? "high" : eventKind === "manual" ? "low" : "medium");
   const eligible =
     isCritical ||
     isHigh ||

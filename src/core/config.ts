@@ -1,15 +1,43 @@
-import type { WotchiConfig, WotchiNotifier } from "./types.js";
+import type {
+  IncidentSeverity,
+  WotchiConfig,
+  WotchiIncidentRule,
+  WotchiLinkTemplates,
+  WotchiNotifier,
+} from "./types.js";
 import { WotchiConfigurationError } from "./errors.js";
 
 export { WotchiConfigurationError };
 
 const MAX_REDACT_KEYS = 100;
+const MAX_RULES = 50;
+const MAX_RULE_STRING_LENGTH = 200;
+const MAX_LINK_TEMPLATE_LENGTH = 1_000;
+const ALLOWED_LINK_PLACEHOLDERS = new Set([
+  "service",
+  "environment",
+  "release",
+  "instance",
+  "fingerprint",
+  "requestId",
+  "correlationId",
+  "traceId",
+  "spanId",
+  "route",
+  "statusCode",
+]);
 
 export interface NormalizedWotchiConfig {
   readonly service: string;
   readonly environment: string;
+  readonly instance?: string;
   readonly release?: string;
   readonly enabled: boolean;
+  readonly filter?: WotchiConfig["filter"];
+  readonly fingerprint?: WotchiConfig["fingerprint"];
+  readonly beforeSend?: WotchiConfig["beforeSend"];
+  readonly links?: Readonly<WotchiLinkTemplates>;
+  readonly rules: readonly WotchiIncidentRule[];
   readonly grouping: {
     readonly windowMs: number;
     readonly alertThreshold: number;
@@ -61,6 +89,127 @@ const readOptionalRecord = (value: unknown, field: string): Record<string, unkno
     return fail(field);
   }
   return value;
+};
+
+const normalizeRuleString = (value: unknown, field: string): string | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return fail(field);
+  }
+  return value.trim().slice(0, MAX_RULE_STRING_LENGTH);
+};
+
+const normalizeSeverity = (value: unknown, field: string): IncidentSeverity | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (value !== "low" && value !== "medium" && value !== "high" && value !== "critical") {
+    return fail(field);
+  }
+  return value;
+};
+
+const freezeHook = <T extends (...args: never[]) => unknown>(hook: T): T => {
+  try {
+    return Object.freeze(hook);
+  } catch {
+    return hook;
+  }
+};
+
+const normalizeLinks = (value: unknown): Readonly<WotchiLinkTemplates> | undefined => {
+  if (value === undefined) {
+    return undefined;
+  }
+  if (!isRecord(value)) {
+    return fail("links");
+  }
+  const normalized: WotchiLinkTemplates = {};
+  for (const key of ["log", "trace"] as const) {
+    const raw = value[key];
+    if (raw === undefined) {
+      continue;
+    }
+    if (typeof raw !== "string" || raw.length === 0 || raw.length > MAX_LINK_TEMPLATE_LENGTH) {
+      return fail(`links.${key}`);
+    }
+    let parsed: URL;
+    try {
+      parsed = new URL(raw.replace(/\{\{[^{}]+\}\}/g, "placeholder"));
+    } catch {
+      return fail(`links.${key}`);
+    }
+    if (
+      parsed.protocol !== "https:" ||
+      parsed.username !== "" ||
+      parsed.password !== "" ||
+      parsed.hash !== ""
+    ) {
+      return fail(`links.${key}`);
+    }
+    const placeholders = raw.match(/\{\{([^{}]+)\}\}/g) ?? [];
+    if (/[{}]/.test(raw.replace(/\{\{[^{}]+\}\}/g, ""))) {
+      return fail(`links.${key}`);
+    }
+    for (const placeholder of placeholders) {
+      const name = placeholder.slice(2, -2);
+      if (!ALLOWED_LINK_PLACEHOLDERS.has(name)) {
+        return fail(`links.${key}`);
+      }
+    }
+    normalized[key] = raw;
+  }
+  return Object.freeze(normalized);
+};
+
+const normalizeRules = (value: unknown): readonly WotchiIncidentRule[] => {
+  if (value === undefined) {
+    return Object.freeze([]);
+  }
+  if (!Array.isArray(value) || value.length > MAX_RULES) {
+    return fail("rules");
+  }
+  const rules = value.map((rawRule, index) => {
+    if (!isRecord(rawRule)) {
+      return fail(`rules[${index}]`);
+    }
+    const alertThreshold = rawRule.alertThreshold;
+    if (
+      alertThreshold !== undefined &&
+      (typeof alertThreshold !== "number" ||
+        !Number.isSafeInteger(alertThreshold) ||
+        alertThreshold <= 0 ||
+        alertThreshold > 1_000_000)
+    ) {
+      return fail(`rules[${index}].alertThreshold`);
+    }
+    if (rawRule.ignore !== undefined && typeof rawRule.ignore !== "boolean") {
+      return fail(`rules[${index}].ignore`);
+    }
+    const environment = normalizeRuleString(rawRule.environment, `rules[${index}].environment`);
+    const route = normalizeRuleString(rawRule.route, `rules[${index}].route`);
+    const severity = normalizeSeverity(rawRule.severity, `rules[${index}].severity`);
+    const rule: WotchiIncidentRule = {};
+    if (environment !== undefined) {
+      rule.environment = environment;
+    }
+    if (route !== undefined) {
+      rule.route = route;
+    }
+    if (rawRule.ignore !== undefined) {
+      rule.ignore = rawRule.ignore;
+    }
+    if (alertThreshold !== undefined) {
+      rule.alertThreshold = alertThreshold;
+    }
+    if (severity !== undefined) {
+      rule.severity = severity;
+    }
+    return Object.freeze(rule);
+  });
+  return Object.freeze(rules);
 };
 
 const normalizeRedactKeys = (privacy: Record<string, unknown> | undefined): readonly string[] => {
@@ -119,13 +268,29 @@ export function validateConfig(config: WotchiConfig): Readonly<NormalizedWotchiC
   ) {
     return fail("release");
   }
+  if (
+    config.instance !== undefined &&
+    (typeof config.instance !== "string" || config.instance.trim().length === 0)
+  ) {
+    return fail("instance");
+  }
   if (config.enabled !== undefined && typeof config.enabled !== "boolean") {
     return fail("enabled");
+  }
+  if (config.filter !== undefined && typeof config.filter !== "function") {
+    return fail("filter");
+  }
+  if (config.fingerprint !== undefined && typeof config.fingerprint !== "function") {
+    return fail("fingerprint");
+  }
+  if (config.beforeSend !== undefined && typeof config.beforeSend !== "function") {
+    return fail("beforeSend");
   }
 
   const grouping = readOptionalRecord(config.grouping, "grouping");
   const queue = readOptionalRecord(config.queue, "queue");
   const privacy = readOptionalRecord(config.privacy, "privacy");
+  const links = normalizeLinks(config.links);
   const concurrency = queue?.concurrency;
   if (concurrency !== undefined && concurrency !== 1) {
     return fail("queue.concurrency");
@@ -134,8 +299,14 @@ export function validateConfig(config: WotchiConfig): Readonly<NormalizedWotchiC
   const normalized: NormalizedWotchiConfig = {
     service: service.trim(),
     environment: environment.trim(),
-    ...(config.release === undefined ? {} : { release: config.release.trim() }),
+    ...(config.instance === undefined ? {} : { instance: config.instance.trim().slice(0, 200) }),
+    ...(config.release === undefined ? {} : { release: config.release.trim().slice(0, 200) }),
     enabled: config.enabled ?? true,
+    ...(config.filter === undefined ? {} : { filter: freezeHook(config.filter) }),
+    ...(config.fingerprint === undefined ? {} : { fingerprint: freezeHook(config.fingerprint) }),
+    ...(config.beforeSend === undefined ? {} : { beforeSend: freezeHook(config.beforeSend) }),
+    ...(links === undefined ? {} : { links }),
+    rules: normalizeRules(config.rules),
     grouping: Object.freeze({
       windowMs: readPositiveInteger(grouping, "windowMs", 60_000),
       alertThreshold: readPositiveInteger(grouping, "alertThreshold", 3),

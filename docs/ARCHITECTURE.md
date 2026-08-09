@@ -2,7 +2,15 @@
 
 ## Current status
 
-Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The current package provides bounded input handling, URL-aware redaction, fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction, diagnostics, serial notification queueing, text/JSON console and Telegram notifiers, optional HTTP status observation, and opt-in process monitoring.
+Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The
+published `0.1.0-beta.2` package provides bounded input handling, URL-aware redaction,
+fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction,
+diagnostics, serial notification queueing, text console, Telegram, and opt-in process monitoring.
+
+The actionable context, safe event controls, generic HTTPS webhook notifier, JSON console output,
+optional HTTP status observation, and production recipe described in this source revision are
+unreleased audit-hardening additions. They require a new approved beta before consumers can obtain
+them from the npm `beta` tag.
 
 ## Consumer-facing package shape
 
@@ -38,6 +46,9 @@ src/
   notifiers/telegram-format.ts      bounded HTML alert formatting
   notifiers/telegram-http.ts        fixed-host HTTPS transport
   notifiers/telegram.ts             Telegram notifier adapter
+  notifiers/alert-payload.ts        shared bounded redacted alert payload
+  notifiers/webhook-http.ts         bounded versioned webhook transport (HTTPS; loopback HTTP opt-in)
+  notifiers/webhook.ts              generic webhook notifier adapter
   integrations/express/index.ts    Express-only public boundary
   integrations/express/status-observer.ts  opt-in direct-response observation
   integrations/nest/index.ts      NestJS-only public boundary
@@ -46,23 +57,11 @@ src/
 Future changes should add behavior behind these contracts:
 
 ```text
-capture -> normalize -> redact -> fingerprint -> group
-        -> policy -> bounded queue -> console/Telegram notifier
+capture -> normalize -> redact -> frozen filter/fingerprint -> rules -> group -> policy
+        -> alert/links -> frozen beforeSend -> bounded queue -> console/Telegram/webhook notifier
 ```
 
-```mermaid
-flowchart LR
-  A[Capture] --> B[Normalize]
-  B --> C[Redact]
-  C --> D[Fingerprint]
-  D --> E[Bounded group store]
-  E --> F[Threshold and cooldown policy]
-  F --> G[Bounded notification queue]
-  G --> H[Console notifier]
-  G --> I[Telegram notifier]
-```
-
-Capture performs bounded normalization, redaction, fingerprinting, grouping, policy evaluation, incident construction, and queue admission synchronously. Fingerprints normalize numeric, UUID-like, and hexadecimal dynamic values so repeated failures with changing IDs normally share one group. Queue work runs with concurrency one and is never awaited by framework error handling. The same core capture path is available to background workers and queue processors; the host remains responsible for retry, acknowledgement, and dead-letter behavior. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
+Capture performs bounded normalization and redaction before frozen user filters and fingerprint callbacks. Grouping and policy produce an alert with optional correlation/operation/job/tags and owner-configured HTTPS links; a frozen `beforeSend` alert hook may transform or suppress it before queue admission. Queue work runs with concurrency one and is never awaited by framework error handling. The same core capture path is available to background workers and queue processors; the host remains responsible for retry, acknowledgement, and dead-letter behavior. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram and webhook work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
 
 The status observer is separate from error handling and runs on the response `finish` event. It
 captures only configured status codes/classes, supports ignored noisy codes and a per-status
@@ -87,6 +86,8 @@ captured a second time.
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
 - no request/response bodies, raw headers, automatic environment collection, or hosted collector in v0.1;
-- console and Telegram are the only notification channels in the current release.
+- console, Telegram, and generic HTTPS webhook are the notification channels in this source revision.
+- webhook destinations are explicit application-owned endpoints; Wotchi does not provide a hosted relay.
+- trace context is passed through from existing instrumentation; Wotchi does not install an OpenTelemetry SDK.
 
 See [Security](SECURITY.md) and [Threat model](THREAT_MODEL.md) for the security boundary and residual risks.

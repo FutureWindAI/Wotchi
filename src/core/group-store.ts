@@ -35,9 +35,15 @@ const cloneSafeEvent = (event: SafeErrorEvent): SafeErrorEvent => {
     timestamp: event.timestamp,
     service: event.service,
     environment: event.environment,
+    ...(event.instance === undefined ? {} : { instance: event.instance }),
     ...(event.release === undefined ? {} : { release: event.release }),
+    ...(event.correlationId === undefined ? {} : { correlationId: event.correlationId }),
+    ...(event.operation === undefined ? {} : { operation: event.operation }),
+    ...(event.job === undefined ? {} : { job: event.job }),
+    ...(event.tags === undefined ? {} : { tags: { ...event.tags } }),
     error: { ...event.error },
     ...(event.request === undefined ? {} : { request: { ...event.request } }),
+    ...(event.trace === undefined ? {} : { trace: { ...event.trace } }),
     ...(context === undefined ? {} : { context: context as Record<string, unknown> }),
   };
 };

@@ -32,6 +32,10 @@ test("client captures, redacts, groups, and sends a threshold alert", async () =
   assert.deepEqual(client.getDiagnostics(), {
     capturedEvents: 3,
     captureFailures: 0,
+    fingerprintCallbackFailures: 0,
+    filterFailures: 0,
+    beforeSendFailures: 0,
+    eventsSuppressed: 0,
     groupsEvicted: 0,
     alertsQueued: 1,
     alertsDropped: 0,
