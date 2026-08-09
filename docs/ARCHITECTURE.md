@@ -3,14 +3,11 @@
 ## Current status
 
 Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The
-published `0.1.0-beta.2` package provides bounded input handling, URL-aware redaction,
+published `0.1.0-beta.3` package provides bounded input handling, URL-aware redaction,
 fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction,
-diagnostics, serial notification queueing, text console, Telegram, and opt-in process monitoring.
-
-The actionable context, safe event controls, generic HTTPS webhook notifier, JSON console output,
-optional HTTP status observation, and production recipe described in this source revision are
-unreleased audit-hardening additions. They require a new approved beta before consumers can obtain
-them from the npm `beta` tag.
+diagnostics, serial notification queueing, text console, Telegram, opt-in process monitoring,
+actionable context, safe event controls, a generic HTTPS webhook notifier, JSON console output,
+optional HTTP status observation, and the production recipe.
 
 ## Consumer-facing package shape
 

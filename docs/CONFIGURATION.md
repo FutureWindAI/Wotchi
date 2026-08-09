@@ -3,10 +3,6 @@
 `createWotchi` validates and freezes configuration at startup. Invalid values fail before the
 application starts sending events; configuration errors do not echo supplied token-like values.
 
-> **Release note:** The advanced context, event controls, `testAlert()`, status observation, and
-> webhook sections below describe unreleased source-revision additions. They are not available from
-> the published `0.1.0-beta.2` package until a new beta is approved and published.
-
 ## Required fields
 
 | Field         | Meaning                                                          |

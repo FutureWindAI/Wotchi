@@ -3,9 +3,6 @@
 This guide takes about five minutes and uses console delivery only. No account, database,
 collector, or external service is required.
 
-> **Release note:** The `testAlert()` and advanced options described in this source checkout are
-> unreleased additions. The published `0.1.0-beta.2` package exposes the beta API only.
-
 ## 1. Install the public beta
 
 Use a supported Node.js release (`18`–`26`; Node.js 22 or 24 LTS is recommended for production):

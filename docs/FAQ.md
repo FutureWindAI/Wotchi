@@ -1,8 +1,5 @@
 # Frequently asked questions
 
-> **Release note:** The webhook, advanced context, status observation, and `testAlert()` answers
-> below describe unreleased source-revision additions, not the published `0.1.0-beta.2` package.
-
 ## Which runtimes and frameworks are supported?
 
 The package keeps compatibility with Node.js `>=18.18.0`, is tested across Node.js 18–26, and

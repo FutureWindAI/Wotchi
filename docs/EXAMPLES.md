@@ -1,12 +1,8 @@
 # Examples
 
 The Express and NestJS examples use the packed Wotchi package and console delivery. The production
-recipe at the end of this document targets unreleased source-revision APIs and is intentionally
-separate from the published beta examples and local-only compatibility fixtures.
-
-> **Release note:** Do not install the production recipe against the published `0.1.0-beta.2`
-> package. It becomes a released consumer example only after the next beta is approved and
-> published.
+recipe at the end of this document uses the current beta APIs and remains separate from the
+published beta examples and local-only compatibility fixtures.
 
 ## Express 5
 
@@ -99,8 +95,7 @@ shutting down and pending notifier delivery must be drained.
 
 ## Production recipe
 
-See [`examples/production-recipe`](../examples/production-recipe) for an unreleased source-revision
-Express 5 service that
+See [`examples/production-recipe`](../examples/production-recipe) for an Express 5 service that
 combines:
 
 - `/healthz` for an external uptime monitor;

@@ -1,9 +1,8 @@
 # Wotchi production recipe
 
 This is a small Express 5 deployment shape for Render, Railway, Cloud Run, or a similar platform.
-It intentionally targets unreleased source-revision APIs and is not a consumer example for the
-published `@futurewindai/wotchi@0.1.0-beta.2` package. Build the package from the repository root
-before installing this recipe.
+It targets the current `@futurewindai/wotchi@0.1.0-beta.3` beta package. Build the package from
+the repository root before installing this recipe.
 
 It demonstrates:
 

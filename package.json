@@ -1,6 +1,6 @@
 {
   "name": "@futurewindai/wotchi",
-  "version": "0.1.0-beta.2",
+  "version": "0.1.0-beta.3",
   "description": "Low-noise error alerts for Node.js, Express, and NestJS applications",
   "keywords": [
     "nodejs",

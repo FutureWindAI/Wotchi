@@ -19,19 +19,15 @@ security, compatibility, performance, package, and maintainer-approval gates.
 - Bounded in-process error capture and grouping
 - Redaction before storage, fingerprinting, logging, or transmission
 - Console and optional Telegram notifications
+- Actionable context, event controls, status observation, bounded HTTPS webhooks, and `testAlert()`
 - Express 4/5 and NestJS 10/11 adapters
 - ESM, CommonJS, and TypeScript declaration exports
 - Compatibility, security, performance, and package checks
 
-The source tree also contains unreleased audit-hardening work for a generic webhook, actionable
-context, event filters/fingerprint overrides, explicit trace passthrough, and `testAlert()`. These
-features are not part of the published `0.1.0-beta.2` tarball until a new approved release is made.
-
 ## Next priorities
 
 - Improve documentation and compatibility examples from maintainer feedback.
-- Publish release evidence with each immutable beta or stable version.
-- Run focused performance/security/package checks for the audit-hardening work before the next beta.
+- Continue publishing release evidence with each immutable beta or stable version.
 - Consider additional logger integrations only after a small public API and performance review.
 
 ## Later, only after separate design review

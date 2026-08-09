@@ -3,8 +3,8 @@
 The public API is exported from one npm package. Framework adapters are optional subpath imports;
 unused framework runtime modules are not loaded by the root entry point.
 
-The repository currently contains unreleased audit-hardening additions. They require a new approved
-beta before consumers can obtain them from the npm `beta` tag.
+The current public beta includes actionable context, event controls, status observation, bounded
+HTTPS webhooks, and `testAlert()` diagnostics.
 
 ## Root import
 

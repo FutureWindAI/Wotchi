@@ -2,7 +2,7 @@
 
 All notable changes to Wotchi are documented here.
 
-## Unreleased — next beta candidate
+## 0.1.0-beta.3 — 2026-08-09
 
 - Added bounded generic HTTPS webhook delivery with optional headers, timeout, and one transient retry.
 - Added actionable release, instance, request/correlation, operation/job, safe tags, stack-frame, context, links, and explicit trace/span fields.
@@ -11,8 +11,10 @@ All notable changes to Wotchi are documented here.
 - Added structured `WotchiClient.testAlert()` results for queue, timeout, delivery, and notifier-failure diagnostics.
 - Added production deployment, uptime-monitor, graceful-shutdown, and worker recipes.
 
-These changes are present in the source tree but are not part of the published `0.1.0-beta.2`
-tarball until a new approved beta is released.
+- Closed the alert-boundary redaction bypasses with serialized-notifier regression coverage.
+- Added hard resource caps, prototype-safe normalization, and typed configuration failures for hostile getters.
+- Rejected private and metadata HTTPS webhook destinations by default and pinned resolved transport addresses.
+- Added content-digest names for local packed artifacts so they cannot be confused with published releases.
 
 ## 0.1.0-beta.2 — 2026-08-08
 
