@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing protected Git tag to release (for example v0.1.0-beta.3)"
+        description: "Existing protected Git tag to release (for example v0.1.0-beta.4)"
         required: true
-        default: v0.1.0-beta.3
+        default: v0.1.0-beta.4
         type: string
       dist_tag:
         description: "npm distribution tag for the staged package"
@@ -179,14 +179,40 @@ jobs:
           [[ "$(node -p "require('./package.json').name")" == "$NPM_PACKAGE" ]]
           [[ "$(node -p "require('./package.json').license")" == "Apache-2.0" ]]
 
-      - name: Download the gate artifact for maintainer inspection
+      - name: Download the exact gate artifact for staging and inspection
         uses: actions/download-artifact@v4
         with:
           name: wotchi-release-${{ inputs.tag }}
           path: release-artifact
 
+      - name: Verify the exact release tarball
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          tarball="$(find release-artifact -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          if [[ -z "$tarball" ]]; then
+            echo "The release-gates job did not provide a tarball." >&2
+            exit 1
+          fi
+          test -f release-artifact/pack.json
+          tar -tzf "$tarball" | grep -Fx 'package/dist/esm/index.js'
+          tar -tzf "$tarball" | grep -Fx 'package/dist/cjs/index.js'
+          tar -tzf "$tarball" | grep -Fx 'package/dist/types/index.d.ts'
+          RELEASE_TAG="$RELEASE_TAG" TARBALL="$tarball" node --input-type=module -e '
+            import { readFileSync } from "node:fs";
+            import { basename } from "node:path";
+            const expectedVersion = process.env.RELEASE_TAG.slice(1);
+            const tarball = process.env.TARBALL;
+            const pack = JSON.parse(readFileSync("release-artifact/pack.json", "utf8"))[0];
+            if (pack.version !== expectedVersion) throw new Error(`Gate artifact version ${pack.version} does not match ${expectedVersion}`);
+            if (basename(tarball) !== pack.filename) throw new Error(`Unexpected gate artifact filename ${basename(tarball)}`);
+            console.log(`Verified ${basename(tarball)} at ${pack.files.length} files and ${pack.size} bytes.`);
+          '
+
       - name: Stage package with npm trusted publishing
-        run: npm stage publish --tag "${{ inputs.dist_tag }}" --registry "$NPM_REGISTRY"
+        run: |
+          tarball="$(find release-artifact -maxdepth 1 -type f -name '*.tgz' -print -quit)"
+          npm stage publish "$tarball" --tag "${{ inputs.dist_tag }}" --registry "$NPM_REGISTRY"
 
       - name: Write approval instructions
         env:
