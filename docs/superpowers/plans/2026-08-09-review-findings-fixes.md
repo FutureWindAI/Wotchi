@@ -84,5 +84,5 @@
 ### Verification and handoff
 
 - [x] Run the focused regression tests first, then `npm test`, `npm run lint`, `npm run typecheck`, `npm run build`, and the recipe build.
-- [x] Confirm the current main worktree remains unchanged and the isolated branch contains the snapshot plus the fixes.
-- [ ] Commit the isolated branch with a review-fix commit and report the branch/worktree path and commit hashes for later merge/cherry-pick after the other model’s work is integrated.
+- [x] Confirm the current main worktree was not edited by this session, then sync later concurrent changes into the isolated branch.
+- [x] Commit the isolated branch with review-fix and synchronization commits and report the branch/worktree path and commit hashes for later merge/cherry-pick after the other model’s work is integrated.
