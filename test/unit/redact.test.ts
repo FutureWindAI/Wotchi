@@ -113,3 +113,30 @@ test("redacts connection URL query credentials and encoded passwords", () => {
     assert.equal(output.includes(secret), false, `${secret} was not redacted`);
   }
 });
+
+test("redacts header, query, cookie, and webhook path secret variants", () => {
+  const canaries = [
+    "WotchiBasicCredentialCanary",
+    "WotchiXApiKeyCanary",
+    "WotchiDbPasswordCanary",
+    "WotchiCookieCanary",
+    "WotchiSignatureCanary",
+    "WotchiEncodedQueryCanary",
+    "WotchiWebhookPathCanary",
+  ];
+  const output = JSON.stringify(
+    redactValue({
+      authorization: "Basic V290Y2hpQmFzaWNDYW5hcnk=",
+      xApiKey: canaries[1],
+      dbPassword: canaries[2],
+      cookieText: "Cookie: session=" + canaries[3],
+      signatureUrl: "https://hooks.example.test/callback?signature=" + canaries[4],
+      encodedUrl: "https://hooks.example.test/callback?t%6fken=" + canaries[5],
+      webhookUrl: "https://hooks.example.test/services/" + canaries[6],
+    }),
+  );
+
+  for (const canary of canaries) {
+    assert.equal(output.includes(canary), false, canary + " escaped redaction");
+  }
+});

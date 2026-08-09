@@ -1,4 +1,10 @@
 import { normalizeUnknown } from "./normalize.js";
+import {
+  MAX_NORMALIZATION_DEPTH,
+  MAX_NORMALIZATION_KEYS,
+  MAX_NORMALIZATION_STACK_LENGTH,
+  MAX_NORMALIZATION_STRING_LENGTH,
+} from "./limits.js";
 import type { NormalizedError, SafeNormalizedValue } from "./normalize.js";
 
 export const REDACTED = "[REDACTED]";
@@ -20,6 +26,12 @@ const DEFAULT_KEYS = [
   "secret",
   "apiKey",
   "api_key",
+  "xApiKey",
+  "x_api_key",
+  "dbPassword",
+  "db_password",
+  "databasePassword",
+  "database_password",
   "token",
   "accessToken",
   "access_token",
@@ -29,13 +41,17 @@ const DEFAULT_KEYS = [
   "private_key",
   "clientSecret",
   "client_secret",
+  "signature",
+  "session",
+  "webhookSecret",
+  "webhook_secret",
   "cardNumber",
   "cvv",
   "cvc",
   "pin",
 ] as const;
 
-const normalizeKey = (key: string): string => key.toLowerCase().replace(/[-_]/g, "");
+const normalizeKey = (key: string): string => key.toLowerCase().replace(/[^a-z0-9]/g, "");
 
 const defaultKeySet = new Set(DEFAULT_KEYS.map(normalizeKey));
 
@@ -97,15 +113,56 @@ const redactConnectionUrl = (candidate: string): string => {
 const redactConnectionUrls = (value: string): string =>
   value.replace(CONNECTION_URL_PATTERN, redactConnectionUrl);
 
+const SENSITIVE_QUERY_KEYS = new Set([
+  "authorization",
+  "cookie",
+  "password",
+  "passwd",
+  "secret",
+  "signature",
+  "token",
+  "accesstoken",
+  "refreshtoken",
+  "apikey",
+  "xapikey",
+  "session",
+]);
+
+const decodeQueryKey = (value: string): string => {
+  try {
+    return decodeURIComponent(value.replace(/\+/g, " "));
+  } catch {
+    return value;
+  }
+};
+
+const redactSensitiveQueryValues = (value: string): string =>
+  value.replace(/([?&])([^=&#\s]+)=([^&#\s]*)/g, (match, prefix: string, key: string) => {
+    if (!SENSITIVE_QUERY_KEYS.has(normalizeKey(decodeQueryKey(key)))) {
+      return match;
+    }
+    return prefix + key + "=" + REDACTED;
+  });
+
+const redactWebhookPathSecrets = (value: string): string =>
+  value.replace(
+    /(https?:\/\/[^/\s]+\/(?:services|hooks|webhooks?)\/)[^/?#\s]+/gi,
+    (_match, prefix: string) => prefix + REDACTED,
+  );
+
 const redactString = (value: string, maxStringLength: number): string => {
   let result = redactConnectionUrls(value);
+  result = redactWebhookPathSecrets(result);
+  result = redactSensitiveQueryValues(result);
   result = result.replace(
     /-----BEGIN [^-]*PRIVATE KEY-----[\s\S]*?-----END [^-]*PRIVATE KEY-----/gi,
     REDACTED,
   );
   result = result.replace(/\bBearer\s+[A-Za-z0-9._~+/=-]+/gi, `Bearer ${REDACTED}`);
+  result = result.replace(/\bBasic\s+[A-Za-z0-9+/=]+/gi, `Basic ${REDACTED}`);
+  result = result.replace(/\b(?:Cookie|Set-Cookie)\s*:\s*[^\r\n]+/gi, "Cookie: [REDACTED]");
   result = result.replace(
-    /\b(?:authorization|password|passwd|secret|token|api[-_]?key)\s*[:=]\s*[^\s,;]+/gi,
+    /\b(?:authorization|password|passwd|secret|signature|session|token|x[-_]?api[-_]?key|db[-_]?password|database[-_]?password|api[-_]?key)\s*[:=]\s*[^\s,;]+/gi,
     (match) => {
       const separatorIndex = match.search(/[:=]/);
       return separatorIndex < 0 ? REDACTED : `${match.slice(0, separatorIndex + 1)}${REDACTED}`;
@@ -123,8 +180,10 @@ const redactString = (value: string, maxStringLength: number): string => {
   return result.slice(0, maxStringLength);
 };
 
-const normalizedOption = (value: number | undefined, fallback: number): number =>
-  Number.isSafeInteger(value) && value !== undefined && value > 0 ? value : fallback;
+const normalizedOption = (value: number | undefined, fallback: number, maximum: number): number =>
+  Number.isSafeInteger(value) && value !== undefined && value > 0 && value <= maximum
+    ? value
+    : fallback;
 
 const redactNormalized = (
   value: SafeNormalizedValue,
@@ -178,10 +237,10 @@ const redactionLimits = (
 ): Required<
   Pick<RedactionOptions, "maxDepth" | "maxKeys" | "maxStringLength" | "maxStackLength">
 > => ({
-  maxDepth: normalizedOption(options.maxDepth, 5),
-  maxKeys: normalizedOption(options.maxKeys, 100),
-  maxStringLength: normalizedOption(options.maxStringLength, 500),
-  maxStackLength: normalizedOption(options.maxStackLength, 4_000),
+  maxDepth: normalizedOption(options.maxDepth, 5, MAX_NORMALIZATION_DEPTH),
+  maxKeys: normalizedOption(options.maxKeys, 100, MAX_NORMALIZATION_KEYS),
+  maxStringLength: normalizedOption(options.maxStringLength, 500, MAX_NORMALIZATION_STRING_LENGTH),
+  maxStackLength: normalizedOption(options.maxStackLength, 4_000, MAX_NORMALIZATION_STACK_LENGTH),
 });
 
 const sensitiveKeySet = (options: RedactionOptions): ReadonlySet<string> => {

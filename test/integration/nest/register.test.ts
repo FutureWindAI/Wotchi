@@ -2,7 +2,7 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
-import { Controller, Get, HttpCode, HttpException, Module } from "@nestjs/common";
+import { Controller, Get, HttpCode, HttpException, Module, Req } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { createWotchi } from "../../../src/index.js";
 import {
@@ -10,8 +10,13 @@ import {
   registerWotchiNestStatusObserver,
 } from "../../../src/integrations/nest/index.js";
 import type { IncidentAlert, WotchiNotifier } from "../../../src/index.js";
+import type { Request } from "express";
 
-const request = (server: http.Server, path: string): Promise<{ status: number; body: string }> =>
+const request = (
+  server: http.Server,
+  path: string,
+  headers: http.OutgoingHttpHeaders = {},
+): Promise<{ status: number; body: string }> =>
   new Promise((resolve, reject) => {
     const address = server.address();
     if (address === null || typeof address === "string") {
@@ -19,7 +24,7 @@ const request = (server: http.Server, path: string): Promise<{ status: number; b
       return;
     }
     const current = http.request(
-      { host: "127.0.0.1", port: address.port, path, method: "GET" },
+      { host: "127.0.0.1", port: address.port, path, method: "GET", headers },
       (response) => {
         const chunks: Buffer[] = [];
         response.on("data", (chunk: Buffer) => chunks.push(chunk));
@@ -51,6 +56,18 @@ class TestController {
   @Get("/generic-error")
   genericError(): never {
     throw new Error("nest generic failure");
+  }
+
+  @Get("/metadata-error")
+  metadataError(@Req() request: Request): never {
+    const carrier = request as Request & Record<string, unknown>;
+    carrier.requestId = request.header("x-request-id");
+    carrier.correlationId = request.header("x-correlation-id");
+    carrier.traceContext = {
+      traceId: request.header("x-trace-id"),
+      spanId: request.header("x-span-id"),
+    };
+    throw new Error("nest metadata failure");
   }
 }
 
@@ -93,6 +110,65 @@ test("NestJS filter captures errors and preserves framework responses", async ()
       captured.some((alert) => alert.summary.includes("do-not-capture")),
       false,
     );
+  } finally {
+    await app.close();
+  }
+});
+
+test("NestJS filter promotes request metadata for alert fields and links", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "nest-metadata-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    links: {
+      log: "https://logs.example.test/{{service}}/{{requestId}}",
+      trace: "https://traces.example.test/{{traceId}}/{{spanId}}",
+    },
+    notifiers: [notifier],
+  });
+  const app = await NestFactory.create(TestModule, { logger: false });
+  registerWotchiNest(app, client, {
+    requestIdProperty: "requestId",
+    correlationIdProperty: "correlationId",
+    traceContextProperty: "traceContext",
+  });
+  await app.listen(0, "127.0.0.1");
+  const server = app.getHttpServer() as http.Server;
+
+  try {
+    const response = await request(server, "/metadata-error", {
+      "x-request-id": "req-nest-42",
+      "x-correlation-id": "corr-nest-42",
+      "x-trace-id": "trace-nest-42",
+      "x-span-id": "span-nest-42",
+    });
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(captured.length, 1);
+    assert.deepEqual(captured[0]?.request, {
+      method: "GET",
+      route: "/metadata-error",
+      statusCode: 500,
+      requestId: "req-nest-42",
+      correlationId: "corr-nest-42",
+      trace: { traceId: "trace-nest-42", spanId: "span-nest-42" },
+    });
+    assert.equal(captured[0]?.correlationId, "corr-nest-42");
+    assert.deepEqual(captured[0]?.trace, {
+      traceId: "trace-nest-42",
+      spanId: "span-nest-42",
+    });
+    assert.deepEqual(captured[0]?.links, {
+      log: "https://logs.example.test/nest-metadata-test/req-nest-42",
+      trace: "https://traces.example.test/trace-nest-42/span-nest-42",
+    });
   } finally {
     await app.close();
   }

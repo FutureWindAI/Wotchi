@@ -19,6 +19,7 @@ const UNREADABLE_VALUE = "[unreadable value]";
 const MAX_DEPTH_VALUE = "[MaxDepth]";
 const CIRCULAR_VALUE = "[Circular]";
 const MAX_KEYS_VALUE = "[MaxKeys]";
+const UNSAFE_OBJECT_KEYS = new Set(["__proto__", "prototype", "constructor"]);
 
 const defaultLimits: NormalizationLimits = {
   maxDepth: 5,
@@ -32,19 +33,29 @@ interface TraversalState {
   keysVisited: number;
 }
 
-const boundedLimit = (value: number, fallback: number): number =>
-  Number.isSafeInteger(value) && value > 0 ? value : fallback;
+const boundedLimit = (value: number, fallback: number, maximum: number): number =>
+  Number.isSafeInteger(value) && value > 0 && value <= maximum ? value : fallback;
 
 const normalizeLimits = (limits?: Partial<NormalizationLimits>): NormalizationLimits => ({
-  maxDepth: boundedLimit(limits?.maxDepth ?? defaultLimits.maxDepth, defaultLimits.maxDepth),
-  maxKeys: boundedLimit(limits?.maxKeys ?? defaultLimits.maxKeys, defaultLimits.maxKeys),
+  maxDepth: boundedLimit(
+    limits?.maxDepth ?? defaultLimits.maxDepth,
+    defaultLimits.maxDepth,
+    MAX_NORMALIZATION_DEPTH,
+  ),
+  maxKeys: boundedLimit(
+    limits?.maxKeys ?? defaultLimits.maxKeys,
+    defaultLimits.maxKeys,
+    MAX_NORMALIZATION_KEYS,
+  ),
   maxStringLength: boundedLimit(
     limits?.maxStringLength ?? defaultLimits.maxStringLength,
     defaultLimits.maxStringLength,
+    MAX_NORMALIZATION_STRING_LENGTH,
   ),
   maxStackLength: boundedLimit(
     limits?.maxStackLength ?? defaultLimits.maxStackLength,
     defaultLimits.maxStackLength,
+    MAX_NORMALIZATION_STACK_LENGTH,
   ),
 });
 
@@ -126,6 +137,9 @@ const normalizeValue = (
 
   const result: { [key: string]: SafeNormalizedValue } = {};
   for (const key of keys) {
+    if (UNSAFE_OBJECT_KEYS.has(key)) {
+      continue;
+    }
     if (state.keysVisited >= limits.maxKeys - 1) {
       result["[truncated]"] = MAX_KEYS_VALUE;
       break;
@@ -202,3 +216,9 @@ export function normalizeError(
   const message = typeof normalized === "string" ? normalized : UNREADABLE_VALUE;
   return { name: "UnknownError", message };
 }
+import {
+  MAX_NORMALIZATION_DEPTH,
+  MAX_NORMALIZATION_KEYS,
+  MAX_NORMALIZATION_STACK_LENGTH,
+  MAX_NORMALIZATION_STRING_LENGTH,
+} from "./limits.js";

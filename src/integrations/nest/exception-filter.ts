@@ -21,7 +21,12 @@ export class WotchiNestExceptionFilter extends BaseExceptionFilter<unknown> {
       // Non-HTTP NestJS contexts do not expose an Express request to mark.
     }
     try {
-      this.client.captureException(exception, getNestRequestContext(host, exception, this.options));
+      const requestContext = getNestRequestContext(host, exception, this.options);
+      this.client.captureException(
+        exception,
+        undefined,
+        requestContext === undefined ? undefined : { request: requestContext },
+      );
     } catch {
       // A capture failure must never change NestJS exception handling.
     }

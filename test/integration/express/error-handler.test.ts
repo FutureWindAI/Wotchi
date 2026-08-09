@@ -3,7 +3,7 @@ import { once } from "node:events";
 import http from "node:http";
 import test from "node:test";
 import express from "express";
-import type { ErrorRequestHandler, RequestHandler } from "express";
+import type { ErrorRequestHandler, Request, RequestHandler } from "express";
 import { createWotchi } from "../../../src/index.js";
 import * as expressIntegration from "../../../src/integrations/express/index.js";
 import type { IncidentAlert, WotchiClient, WotchiNotifier } from "../../../src/index.js";
@@ -98,6 +98,72 @@ test("Express middleware captures and passes the original error to the existing 
     assert.equal(finalHandlerCalls, 1);
     assert.equal(captured.length, 1);
     assert.equal(captured[0]?.summary.includes("do-not-capture"), false);
+  } finally {
+    await close(server);
+  }
+});
+
+test("Express error handler promotes request metadata for alert fields and links", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "express-metadata-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    links: {
+      log: "https://logs.example.test/{{service}}/{{requestId}}",
+      trace: "https://traces.example.test/{{traceId}}/{{spanId}}",
+    },
+    notifiers: [notifier],
+  });
+  const app = express();
+  app.get("/metadata", (request: Request, response) => {
+    const carrier = request as Request & Record<string, unknown>;
+    carrier.requestId = "req-express-42";
+    carrier.correlationId = "corr-express-42";
+    carrier.traceContext = { traceId: "trace-express-42", spanId: "span-express-42" };
+    response.status(500);
+    throw new Error("express metadata failure");
+  });
+  app.use(
+    wotchiErrorHandler(client, {
+      requestIdProperty: "requestId",
+      correlationIdProperty: "correlationId",
+      traceContextProperty: "traceContext",
+    }),
+  );
+  app.use((_error: unknown, _request: Request, response: express.Response) => {
+    response.status(500).json({ error: "handled" });
+  });
+
+  const server = await listen(app);
+  try {
+    const response = await request(server, "/metadata");
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(captured.length, 1);
+    assert.deepEqual(captured[0]?.request, {
+      method: "GET",
+      route: "/metadata",
+      statusCode: 500,
+      requestId: "req-express-42",
+      correlationId: "corr-express-42",
+      trace: { traceId: "trace-express-42", spanId: "span-express-42" },
+    });
+    assert.equal(captured[0]?.correlationId, "corr-express-42");
+    assert.deepEqual(captured[0]?.trace, {
+      traceId: "trace-express-42",
+      spanId: "span-express-42",
+    });
+    assert.deepEqual(captured[0]?.links, {
+      log: "https://logs.example.test/express-metadata-test/req-express-42",
+      trace: "https://traces.example.test/trace-express-42/span-express-42",
+    });
   } finally {
     await close(server);
   }

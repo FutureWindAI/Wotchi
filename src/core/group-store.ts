@@ -1,4 +1,5 @@
 import { normalizeUnknown } from "./normalize.js";
+import { MAX_EVENTS_PER_WINDOW, MAX_GROUPS } from "./limits.js";
 import { createRollingWindow } from "./rolling-window.js";
 import type { IncidentGroup, IncidentSeverity, SafeErrorEvent } from "./types.js";
 
@@ -35,16 +36,33 @@ const cloneSafeEvent = (event: SafeErrorEvent): SafeErrorEvent => {
     timestamp: event.timestamp,
     service: event.service,
     environment: event.environment,
+    ...(event.instance === undefined ? {} : { instance: event.instance }),
     ...(event.release === undefined ? {} : { release: event.release }),
+    ...(event.correlationId === undefined ? {} : { correlationId: event.correlationId }),
+    ...(event.operation === undefined ? {} : { operation: event.operation }),
+    ...(event.job === undefined ? {} : { job: event.job }),
+    ...(event.tags === undefined ? {} : { tags: { ...event.tags } }),
     error: { ...event.error },
     ...(event.request === undefined ? {} : { request: { ...event.request } }),
+    ...(event.trace === undefined ? {} : { trace: { ...event.trace } }),
     ...(context === undefined ? {} : { context: context as Record<string, unknown> }),
   };
 };
 
 export function createGroupStore(options: GroupStoreOptions): GroupStore {
-  if (!Number.isSafeInteger(options.maxGroups) || options.maxGroups <= 0) {
+  if (
+    !Number.isSafeInteger(options.maxGroups) ||
+    options.maxGroups <= 0 ||
+    options.maxGroups > MAX_GROUPS
+  ) {
     throw new RangeError("maxGroups must be a positive integer");
+  }
+  if (
+    !Number.isSafeInteger(options.maxEventsPerWindow) ||
+    options.maxEventsPerWindow <= 0 ||
+    options.maxEventsPerWindow > MAX_EVENTS_PER_WINDOW
+  ) {
+    throw new RangeError("maxEventsPerWindow must be a positive integer");
   }
   const now = options.now ?? Date.now;
   const groups = new Map<string, StoredGroup>();

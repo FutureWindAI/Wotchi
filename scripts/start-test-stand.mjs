@@ -2,6 +2,7 @@ import { copyFileSync, existsSync, readFileSync } from "node:fs";
 import { spawn, spawnSync } from "node:child_process";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { localArtifactBasename, renamePackedArtifact } from "./local-artifact.mjs";
 
 const projectDirectory = dirname(dirname(fileURLToPath(import.meta.url)));
 const standsDirectory = join(projectDirectory, ".test_stands");
@@ -122,15 +123,21 @@ if (
         const packageJson = JSON.parse(
           readFileSync(join(projectDirectory, "package.json"), "utf8"),
         );
-        const tarballName = `futurewindai-wotchi-${packageJson.version}.tgz`;
-        const tarballPath = join(standsDirectory, tarballName);
         const pack = spawnSync(npmCommand, ["pack", "--pack-destination", standsDirectory], {
           cwd: projectDirectory,
           env: standEnvironment,
           stdio: "ignore",
         });
-        const install =
+        const tarballPath =
           pack.status === 0
+            ? renamePackedArtifact({
+                version: packageJson.version,
+                destinationDirectory: standsDirectory,
+              })
+            : "";
+        const tarballName = tarballPath === "" ? "" : localArtifactBasename(tarballPath);
+        const install =
+          pack.status === 0 && tarballPath !== ""
             ? spawnSync(
                 npmCommand,
                 [

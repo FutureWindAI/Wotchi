@@ -9,8 +9,9 @@ control plane, persistent event database, or automatic environment scraping.
 2. Unknown values are normalized with depth, key, string, and stack limits.
 3. Credential-shaped fields, connection URL userinfo/query credentials, and configured sensitive
    keys are redacted.
-4. The sanitized event is fingerprinted and retained only in bounded in-memory groups.
-5. A deterministic alert is queued for the configured notifier.
+4. Safe filters and fingerprint callbacks run on the frozen sanitized event; `beforeSend` runs on a frozen sanitized alert.
+5. The sanitized event is fingerprinted and retained only in bounded in-memory groups.
+6. A deterministic alert is queued for the configured notifier.
 
 Raw request bodies, response bodies, cookies, arbitrary headers, and environment variables are not
 collected by the framework adapters. The notifier receives the sanitized alert, not the original
@@ -19,10 +20,25 @@ error object.
 ## Credentials
 
 - Never commit Telegram bot tokens, chat IDs, npm credentials, or production error payloads.
+- Never commit webhook URLs or authorization headers; treat webhook destinations and headers as
+  application secrets when they grant access.
 - Use environment variables or a secret manager in the host application.
 - Treat a token pasted into chat, an issue, a CI log, or a public repository as compromised and
   rotate it immediately.
 - The package does not contain a shared Wotchi Telegram bot token.
+
+The generic webhook notifier accepts HTTPS URLs without embedded credentials or fragments by
+default, rejects loopback, RFC1918, link-local, unique-local IPv6, metadata and internal DNS
+destinations, limits custom header names/count/values, bounds the versioned JSON envelope and
+response body, rejects redirects, and limits timeout/retry behavior. HTTP is accepted only for
+explicit loopback opt-in. An explicit allowPrivateDestinations opt-in exists for isolated
+development only; never derive it or the destination from untrusted runtime input. The real
+transport resolves and pins the destination address immediately before connecting. Webhook
+operators should validate authentication, authorization, retention, and redaction again at the
+receiving service.
+
+Trace and span IDs are passed through only when the host application supplies them. Wotchi does not
+install an OpenTelemetry SDK or collect trace data automatically.
 
 ## Operational boundaries
 

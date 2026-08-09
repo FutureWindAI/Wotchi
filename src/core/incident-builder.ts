@@ -1,5 +1,6 @@
 import type { IncidentAlert, IncidentGroup, IncidentSeverity } from "./types.js";
 import type { IncidentPolicyDecision } from "./incident-policy.js";
+import { selectApplicationFrame } from "./stack-frame.js";
 
 const titleCase = (value: IncidentSeverity): string =>
   `${value.slice(0, 1).toUpperCase()}${value.slice(1)}`;
@@ -36,6 +37,11 @@ export function buildIncidentAlert(
 ): IncidentAlert {
   const message = group.sample.error.message;
   const errorName = group.sample.error.name;
+  const applicationFrame = selectApplicationFrame(group.sample.error.stack);
+  const error: NonNullable<IncidentAlert["error"]> = {
+    ...group.sample.error,
+    ...(applicationFrame === undefined ? {} : { applicationFrame }),
+  };
   return {
     id: `wotchi-${group.fingerprint}-${group.lastSeenAt}`,
     fingerprint: group.fingerprint,
@@ -48,5 +54,17 @@ export function buildIncidentAlert(
     occurrences: group.windowCount,
     service: group.sample.service,
     environment: group.sample.environment,
+    ...(group.sample.instance === undefined ? {} : { instance: group.sample.instance }),
+    ...(group.sample.release === undefined ? {} : { release: group.sample.release }),
+    ...(group.sample.correlationId === undefined
+      ? {}
+      : { correlationId: group.sample.correlationId }),
+    ...(group.sample.operation === undefined ? {} : { operation: group.sample.operation }),
+    ...(group.sample.job === undefined ? {} : { job: group.sample.job }),
+    ...(group.sample.tags === undefined ? {} : { tags: group.sample.tags }),
+    error,
+    ...(group.sample.request === undefined ? {} : { request: group.sample.request }),
+    ...(group.sample.trace === undefined ? {} : { trace: group.sample.trace }),
+    ...(group.sample.context === undefined ? {} : { context: group.sample.context }),
   };
 }

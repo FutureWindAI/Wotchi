@@ -10,7 +10,12 @@ export function createExpressErrorHandler(
   return (error, request, response, next): void => {
     markExpressErrorCaptured(request);
     try {
-      client.captureException(error, getExpressRequestContext(request, response, options));
+      const requestContext = getExpressRequestContext(request, response, options);
+      client.captureException(
+        error,
+        undefined,
+        requestContext === undefined ? undefined : { request: requestContext },
+      );
     } catch {
       // A capture failure must never change Express error handling.
     }

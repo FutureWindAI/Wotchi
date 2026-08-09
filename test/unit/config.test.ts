@@ -41,6 +41,8 @@ test("configuration validation applies bounded defaults and freezes the result",
   assert.equal(Object.isFrozen(normalized.queue), true);
   assert.equal(Object.isFrozen(normalized.privacy), true);
   assert.equal(Object.isFrozen(normalized.notifiers), true);
+  assert.deepEqual(normalized.rules, []);
+  assert.equal(Object.isFrozen(normalized.rules), true);
 });
 
 test("configuration rejects blank service and environment", () => {
@@ -95,6 +97,81 @@ test("configuration errors never echo token-like supplied values", () => {
     (error: unknown) => {
       assert.equal(error instanceof WotchiConfigurationError, true);
       assert.equal((error as Error).message.includes(token), false);
+      return true;
+    },
+  );
+});
+
+test("configuration bounds event rules and validates safe callbacks", () => {
+  const normalized = validateConfig({
+    ...baseConfig(),
+    filter: () => true,
+    fingerprint: () => "stable",
+    beforeSend: (alert) => alert,
+    links: {
+      log: "https://logs.example.test/{{service}}",
+    },
+    rules: [{ environment: "production", route: "/health", alertThreshold: 2, severity: "low" }],
+  });
+
+  assert.deepEqual(normalized.rules, [
+    { environment: "production", route: "/health", alertThreshold: 2, severity: "low" },
+  ]);
+  assert.throws(
+    () => validateConfig({ ...baseConfig(), rules: [{ alertThreshold: 0 }] }),
+    WotchiConfigurationError,
+  );
+  assert.throws(
+    () => validateConfig({ ...baseConfig(), filter: "not-a-function" as never }),
+    WotchiConfigurationError,
+  );
+  assert.equal(Object.isFrozen(normalized.links), true);
+  assert.equal(normalized.links?.log, "https://logs.example.test/{{service}}");
+  assert.throws(
+    () =>
+      validateConfig({
+        ...baseConfig(),
+        links: { log: "https://logs.example.test/{{unknown}}" },
+      }),
+    WotchiConfigurationError,
+  );
+});
+
+test("configuration rejects values above every resource cap", () => {
+  const cases: WotchiConfig[] = [
+    { ...baseConfig(), grouping: { maxGroups: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), grouping: { maxEventsPerWindow: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), queue: { maxPendingAlerts: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxDepth: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxKeys: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxStringLength: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxStackLength: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), grouping: { maxGroups: Infinity } },
+  ];
+
+  for (const config of cases) {
+    assert.throws(() => validateConfig(config), WotchiConfigurationError);
+  }
+});
+
+test("configuration turns a throwing notifier getter into a typed error", () => {
+  const notifier = { name: "hostile" } as { name: string; send?: unknown };
+  Object.defineProperty(notifier, "send", {
+    enumerable: true,
+    get() {
+      throw new Error("Wotchi raw getter canary");
+    },
+  });
+
+  assert.throws(
+    () =>
+      validateConfig({
+        ...baseConfig(),
+        notifiers: [notifier as never],
+      }),
+    (error: unknown) => {
+      assert.equal(error instanceof WotchiConfigurationError, true);
+      assert.equal(String(error).includes("Wotchi raw getter canary"), false);
       return true;
     },
   );

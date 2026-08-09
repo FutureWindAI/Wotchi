@@ -2,7 +2,7 @@ import type { WotchiClient } from "../../core/types.js";
 import { createExpressErrorHandler } from "./error-handler.js";
 import type { ExpressWotchiOptions } from "./request-context.js";
 
-export { consoleNotifier, createWotchi, telegramNotifier } from "../../index.js";
+export { consoleNotifier, createWotchi, telegramNotifier, webhookNotifier } from "../../index.js";
 
 export type {
   ConsoleNotifierOptions,
@@ -11,12 +11,25 @@ export type {
   IncidentSeverity,
   SafeErrorEvent,
   TelegramNotifierOptions,
+  WebhookNotifierOptions,
+  WotchiBeforeSend,
+  WotchiCaptureOptions,
   WotchiClient,
   WotchiConfig,
   WotchiDiagnostics,
+  WotchiEventFilter,
   WotchiEventInput,
+  WotchiFingerprintCallback,
+  WotchiFingerprintOverride,
+  WotchiIncidentRule,
+  WotchiLinkTemplates,
+  WotchiLinks,
   WotchiNotifier,
   WotchiRequestContext,
+  WotchiTags,
+  WotchiTestAlertResult,
+  WotchiTestAlertStatus,
+  WotchiTraceContext,
 } from "../../index.js";
 
 export type { ExpressWotchiOptions } from "./request-context.js";

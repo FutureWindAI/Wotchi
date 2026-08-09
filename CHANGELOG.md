@@ -2,6 +2,18 @@
 
 All notable changes to Wotchi are documented here.
 
+## Unreleased — next beta candidate
+
+- Added bounded generic HTTPS webhook delivery with optional headers, timeout, and one transient retry.
+- Added actionable release, instance, request/correlation, operation/job, safe tags, stack-frame, context, links, and explicit trace/span fields.
+- Added frozen sanitized event filters/config fingerprint callbacks, alert-level `beforeSend`, fingerprint overrides, and exact environment/route rules with hook diagnostics.
+- Added a versioned webhook envelope, sanitized payload builder, explicit loopback HTTP option, and redirect/configuration guards.
+- Added structured `WotchiClient.testAlert()` results for queue, timeout, delivery, and notifier-failure diagnostics.
+- Added production deployment, uptime-monitor, graceful-shutdown, and worker recipes.
+
+These changes are present in the source tree but are not part of the published `0.1.0-beta.2`
+tarball until a new approved beta is released.
+
 ## 0.1.0-beta.2 — 2026-08-08
 
 - Added URL-aware redaction for PostgreSQL, Redis, MongoDB, and credential-bearing connection strings before fingerprinting and delivery.

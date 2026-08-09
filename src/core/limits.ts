@@ -1,0 +1,10 @@
+export const MAX_GROUPS = 10_000;
+export const MAX_EVENTS_PER_WINDOW = 10_000;
+export const MAX_PENDING_ALERTS = 10_000;
+export const MAX_WINDOW_MS = 7 * 24 * 60 * 60 * 1_000;
+export const MAX_ALERT_THRESHOLD = 1_000_000;
+export const MAX_COOLDOWN_MS = 30 * 24 * 60 * 60 * 1_000;
+export const MAX_NORMALIZATION_DEPTH = 20;
+export const MAX_NORMALIZATION_KEYS = 10_000;
+export const MAX_NORMALIZATION_STRING_LENGTH = 32_768;
+export const MAX_NORMALIZATION_STACK_LENGTH = 32_768;

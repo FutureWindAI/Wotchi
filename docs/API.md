@@ -3,6 +3,9 @@
 The public API is exported from one npm package. Framework adapters are optional subpath imports;
 unused framework runtime modules are not loaded by the root entry point.
 
+The repository currently contains unreleased audit-hardening additions. They require a new approved
+beta before consumers can obtain them from the npm `beta` tag.
+
 ## Root import
 
 ```ts
@@ -11,26 +14,29 @@ import {
   createWotchi,
   registerWotchiProcessMonitor,
   telegramNotifier,
+  webhookNotifier,
 } from "@futurewindai/wotchi";
 ```
 
 ### Functions
 
-| Export                                 | Contract                                                                                                 |
-| -------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| `createWotchi(config)`                 | Validates and freezes configuration, then returns an isolated `WotchiClient`.                            |
-| `consoleNotifier(options?)`            | Creates a notifier that writes bounded text or one-line JSON alerts to the console or a supplied writer. |
-| `telegramNotifier(options)`            | Creates an opt-in Telegram notifier using a bot token and destination chat ID.                           |
-| `registerWotchiProcessMonitor(client)` | Opts into `uncaughtExceptionMonitor` observation without changing process exit behavior.                 |
+| Export                                 | Contract                                                                                                                                                                          |
+| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createWotchi(config)`                 | Validates and freezes configuration, then returns an isolated `WotchiClient`.                                                                                                     |
+| `consoleNotifier(options?)`            | Creates a notifier that writes bounded text or one-line JSON alerts to the console or a supplied writer.                                                                          |
+| `telegramNotifier(options)`            | Creates an opt-in Telegram notifier using a bot token and destination chat ID.                                                                                                    |
+| `webhookNotifier(options)`             | Creates a bounded versioned JSON notifier; HTTPS is required by default, with explicit loopback HTTP opt-in, optional headers, payload builder, timeout, and one transient retry. |
+| `registerWotchiProcessMonitor(client)` | Opts into `uncaughtExceptionMonitor` observation without changing process exit behavior.                                                                                          |
 
 ### Client methods
 
-| Method                              | Behavior                                                                                                                                   |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `captureException(error, context?)` | Accepts an unknown thrown value from HTTP, worker, queue, or manual code, sanitizes it, groups it, and queues an alert when policy allows. |
-| `captureEvent(event)`               | Captures an explicit error-level event with optional metadata, context, and request fields.                                                |
-| `flush(timeoutMs?)`                 | Waits for queued notifier work when the host explicitly needs deterministic completion.                                                    |
-| `getDiagnostics()`                  | Returns a frozen snapshot of bounded counters and queue state.                                                                             |
+| Method                                        | Behavior                                                                                                                                   |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
+| `captureException(error, context?, options?)` | Accepts an unknown thrown value from HTTP, worker, queue, or manual code, sanitizes it, groups it, and queues an alert when policy allows. |
+| `captureEvent(event)`                         | Captures an explicit error-level event with optional metadata, context, request, trace, fingerprint, and severity fields.                  |
+| `testAlert()`                                 | Returns a structured result distinguishing queue admission, flush timeout, notifier failure, and successful delivery.                      |
+| `flush(timeoutMs?)`                           | Waits for queued notifier work when the host explicitly needs deterministic completion.                                                    |
+| `getDiagnostics()`                            | Returns a frozen snapshot of bounded counters and queue state.                                                                             |
 
 The capture methods are synchronous and do not await network delivery. Notifier failures are
 isolated from the host application. See [configuration](CONFIGURATION.md) for defaults and limits.
@@ -60,14 +66,28 @@ Call `flush()` only during an intentional graceful shutdown or deterministic tes
 uses it internally when its adapter-specific `alertThreshold` is configured; ordinary errors keep
 the client's `grouping.alertThreshold`.
 
+`captureException` accepts a third `WotchiCaptureOptions` argument for a fingerprint override,
+severity, threshold, request/trace/correlation context, operation/job labels, or bounded safe tags.
+The `request` option is the sanitized `WotchiRequestContext` used by HTTP adapters; it keeps
+request metadata first-class so correlation IDs and configured request/trace links are preserved.
+
+`filter` and fingerprint callbacks receive frozen, normalized, redacted `SafeErrorEvent` values. An
+exact `rules` match can ignore an event or override threshold/severity. An event `fingerprint` can
+be a bounded string or callback. `beforeSend` receives a frozen, sanitized `IncidentAlert`, and may
+return `null` to suppress it or a bounded alert to transform it. Callback work is synchronous and
+should remain short; hook failures are isolated and reflected in diagnostics.
+
 ## Public types
 
 The root exports the public contracts used by consumers and adapters:
 
 `ConsoleNotifierOptions`, `IncidentAlert`, `IncidentGroup`, `IncidentSeverity`, `SafeErrorEvent`,
-`TelegramNotifierOptions`, `WotchiClient`, `WotchiConfig`, `WotchiDiagnostics`, `WotchiEventInput`,
-`WotchiEventKind`, `WotchiNotifier`, `WotchiRequestContext`, `NormalizedWotchiConfig`,
-`ProcessMonitorHandle`, and `WotchiConfigurationError`.
+`TelegramNotifierOptions`, `WebhookNotifierOptions`, `WotchiBeforeSend`, `WotchiCaptureOptions`,
+`WotchiClient`, `WotchiConfig`, `WotchiDiagnostics`, `WotchiEventFilter`, `WotchiEventInput`,
+`WotchiEventKind`, `WotchiFingerprintCallback`, `WotchiFingerprintOverride`, `WotchiIncidentRule`,
+`WotchiLinkTemplates`, `WotchiLinks`, `WotchiNotifier`, `WotchiRequestContext`, `WotchiTags`,
+`WotchiTestAlertResult`, `WotchiTestAlertStatus`, `WotchiTraceContext`, `NormalizedWotchiConfig`, `ProcessMonitorHandle`,
+and `WotchiConfigurationError`.
 
 ## Express entry point
 
@@ -129,9 +149,10 @@ bounded JSON object per line:
 consoleNotifier({ format: "json" });
 ```
 
-The JSON fields are `title`, `fingerprint`, `severity`, `summary`, `suggestedActions`,
-`firstSeenAt`, `lastSeenAt`, `occurrences`, `service`, and `environment`. Values are bounded and
-redacted before writing.
+The JSON fields include `title`, `fingerprint`, `severity`, `summary`, `suggestedActions`,
+`firstSeenAt`, `lastSeenAt`, `occurrences`, `service`, `environment`, and any available bounded
+`release`, `instance`, `correlationId`, `operation`, `job`, `tags`, `links`, `error`, `request`,
+`trace`, and `context` fields. Values are bounded and redacted before writing.
 
 ## Module formats and dependencies
 

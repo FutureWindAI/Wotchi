@@ -12,12 +12,21 @@ for i in 1 2 3; do curl -sS -i http://127.0.0.1:3000/failure; done
 Different fingerprints, an expired window, or a cooldown can also prevent a new alert. Inspect
 `wotchi.getDiagnostics()` in a local test when you need queue and grouping counters.
 
+For destination configuration, run `const result = await wotchi.testAlert()` in a controlled
+environment and inspect `result.status`, `result.delivered`, and `result.notifierFailures`. This
+uses the normal queue and notifier path without throwing a production application error.
+
 ## Numeric IDs are grouped together
 
 The default fingerprint intentionally replaces numeric, UUID-like, and hexadecimal dynamic values
 with stable placeholders. This prevents one incident per user ID, order ID, or database key. If two
 numeric cases must be separate, distinguish them with an error name, message, route, or application
 stack frame; metadata alone does not change the fingerprint.
+
+Use an explicit `fingerprint` override, configuration fingerprint callback, `filter`, `beforeSend`,
+or exact `rules` match when the default grouping does not match the service's incident boundaries.
+Filter/fingerprint callbacks receive frozen sanitized events; `beforeSend` receives a frozen
+sanitized alert. Returning `null` from `beforeSend` suppresses the alert.
 
 ## Express responses changed
 
@@ -83,6 +92,21 @@ Confirm that the application supplied both `WOTCHI_TELEGRAM_BOT_TOKEN` and
 `WOTCHI_TELEGRAM_CHAT_ID`, that the bot was started or added to the destination chat, and that the
 host can reach Telegram over HTTPS. Never put the token in source control. Run the console notifier
 first to separate capture and grouping problems from delivery problems.
+
+## HTTPS webhook does not deliver
+
+Run `const result = await wotchi.testAlert()` and inspect its status and `notifierFailures`. Confirm
+the destination is an HTTPS URL without embedded credentials/fragments, the host can reach it, and
+any authentication header is present in the environment. Wotchi retries one `429`/`5xx` response,
+but it does not persist failed alerts or turn a webhook into a durable relay. For a local collector,
+HTTP is allowed only with `allowHttpLoopback: true` and a loopback hostname.
+
+## Duplicate alerts across replicas
+
+Each process has its own bounded group store and cooldown state. Multiple replicas can therefore
+send duplicate alerts, and restarts reset that state. Add an external uptime monitor for process
+and host failures. A shared relay with cross-instance deduplication is a future architecture, not
+part of this in-process package.
 
 ## Process monitoring did not keep a terminating process alive
 

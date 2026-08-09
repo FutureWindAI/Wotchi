@@ -70,6 +70,12 @@ const normalizeOptions = (
     ...(options?.requestIdProperty === undefined
       ? {}
       : { requestIdProperty: options.requestIdProperty }),
+    ...(options?.correlationIdProperty === undefined
+      ? {}
+      : { correlationIdProperty: options.correlationIdProperty }),
+    ...(options?.traceContextProperty === undefined
+      ? {}
+      : { traceContextProperty: options.traceContextProperty }),
     statusCodes: normalizeStatuses(options?.statusCodes, DEFAULT_STATUS_CODES),
     statusClasses: normalizeStatusClasses(options?.statusClasses),
     ignoreStatusCodes: normalizeStatuses(options?.ignoreStatusCodes, []),
