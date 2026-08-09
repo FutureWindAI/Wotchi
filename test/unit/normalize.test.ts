@@ -86,3 +86,31 @@ test("does not retain raw object references", () => {
 
   assert.equal(normalized.nested.value, "before");
 });
+
+test("does not install attacker-controlled prototype keys", () => {
+  const payload = JSON.parse(
+    '{"__proto__":{"wotchiPolluted":"synthetic"},"prototype":{"wotchiPrototype":"synthetic"},"constructor":{"wotchiConstructor":"synthetic"},"safe":"value"}',
+  );
+  const normalized = normalizeUnknown(payload) as Record<string, unknown>;
+
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "__proto__"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "prototype"), false);
+  assert.equal(Object.prototype.hasOwnProperty.call(normalized, "constructor"), false);
+  assert.equal((normalized as { wotchiPolluted?: string }).wotchiPolluted, undefined);
+  assert.equal(({} as { wotchiPolluted?: string }).wotchiPolluted, undefined);
+  assert.equal(normalized.safe, "value");
+});
+
+test("normalization falls back when direct limits exceed the hard caps", () => {
+  const normalized = normalizeUnknown(
+    { nested: { value: "safe" } },
+    {
+      maxDepth: Number.MAX_SAFE_INTEGER,
+      maxKeys: Number.MAX_SAFE_INTEGER,
+      maxStringLength: Number.MAX_SAFE_INTEGER,
+      maxStackLength: Number.MAX_SAFE_INTEGER,
+    },
+  ) as Record<string, unknown>;
+
+  assert.deepEqual(normalized, { nested: { value: "safe" } });
+});

@@ -1,5 +1,7 @@
+import dns from "node:dns";
 import http from "node:http";
 import https from "node:https";
+import net from "node:net";
 import type { IncidentAlert, WebhookNotifierOptions } from "../core/types.js";
 import { toBoundedAlertPayload, toBoundedPayload } from "./alert-payload.js";
 
@@ -18,6 +20,7 @@ export interface WebhookRequestOptions {
   method: "POST";
   path: string;
   headers: Record<string, string | number>;
+  allowPrivateDestinations?: boolean;
   signal?: AbortSignal;
 }
 
@@ -40,6 +43,7 @@ export interface WebhookSendOptions {
   timeoutMs?: number;
   maxRetries?: number;
   allowHttpLoopback?: boolean;
+  allowPrivateDestinations?: boolean;
   payloadBuilder?: (alert: Readonly<IncidentAlert>) => unknown;
 }
 
@@ -48,7 +52,131 @@ const wait = (delayMs: number): Promise<void> =>
     setTimeout(resolve, delayMs);
   });
 
-const normalizeUrl = (value: string, allowHttpLoopback = false): URL => {
+const normalizeHost = (value: string): string =>
+  value
+    .toLowerCase()
+    .replace(/^\[|\]$/g, "")
+    .replace(/\.$/g, "");
+
+const parseIPv4 = (value: string): number[] | undefined => {
+  const parts = value.split(".");
+  if (parts.length !== 4 || parts.some((part) => !/^\d+$/.test(part))) {
+    return undefined;
+  }
+  const numbers = parts.map(Number);
+  return numbers.every((part) => part >= 0 && part <= 255) ? numbers : undefined;
+};
+
+const isPrivateIPv4 = (value: string): boolean => {
+  const parts = parseIPv4(value);
+  if (parts === undefined) {
+    return false;
+  }
+  const first = parts[0] ?? -1;
+  const second = parts[1] ?? -1;
+  return (
+    first === 0 ||
+    first === 10 ||
+    first === 127 ||
+    (first === 100 && second >= 64 && second <= 127) ||
+    (first === 169 && second === 254) ||
+    (first === 172 && second >= 16 && second <= 31) ||
+    (first === 192 && second === 168) ||
+    (first === 198 && (second === 18 || second === 19))
+  );
+};
+
+const parseIPv6 = (value: string): number[] | undefined => {
+  const host = normalizeHost(value);
+  const halves = host.split("::");
+  if (halves.length > 2) {
+    return undefined;
+  }
+  const parseHalf = (half: string): number[] | undefined => {
+    if (half === "") {
+      return [];
+    }
+    const groups = half.split(":");
+    const values: number[] = [];
+    for (const group of groups) {
+      if (group.includes(".")) {
+        const ipv4 = parseIPv4(group);
+        if (ipv4 === undefined) {
+          return undefined;
+        }
+        values.push((ipv4[0] ?? 0) * 256 + (ipv4[1] ?? 0));
+        values.push((ipv4[2] ?? 0) * 256 + (ipv4[3] ?? 0));
+        continue;
+      }
+      if (!/^[0-9a-f]{1,4}$/i.test(group)) {
+        return undefined;
+      }
+      values.push(Number.parseInt(group, 16));
+    }
+    return values;
+  };
+  const left = parseHalf(halves[0] ?? "");
+  const right = parseHalf(halves[1] ?? "");
+  if (left === undefined || right === undefined) {
+    return undefined;
+  }
+  const missing = halves.length === 2 ? 8 - left.length - right.length : 0;
+  if (missing < 1 || left.length + right.length + missing !== 8) {
+    return undefined;
+  }
+  const groups = [...left, ...Array.from({ length: missing }, () => 0), ...right];
+  return groups.flatMap((group) => [(group >> 8) & 0xff, group & 0xff]);
+};
+
+const isPrivateIPv6 = (value: string): boolean => {
+  const bytes = parseIPv6(value);
+  if (bytes === undefined) {
+    return false;
+  }
+  const allZero = bytes.every((byte) => byte === 0);
+  const loopback = allZero || (bytes.slice(0, 15).every((byte) => byte === 0) && bytes[15] === 1);
+  const first = bytes[0] ?? 0;
+  const second = bytes[1] ?? 0;
+  if (
+    loopback ||
+    first === 0xfc ||
+    first === 0xfd ||
+    (first === 0xfe && (second & 0xc0) === 0x80)
+  ) {
+    return true;
+  }
+  const mapped =
+    bytes.slice(0, 10).every((byte) => byte === 0) && bytes[10] === 0xff && bytes[11] === 0xff;
+  const compatible = bytes.slice(0, 12).every((byte) => byte === 0);
+  if (!mapped && !compatible) {
+    return false;
+  }
+  return isPrivateIPv4(bytes.slice(12).join("."));
+};
+
+const isPrivateDestination = (value: string): boolean => {
+  const host = normalizeHost(value);
+  if (
+    host === "localhost" ||
+    host.endsWith(".localhost") ||
+    host.endsWith(".local") ||
+    host === "metadata.google.internal" ||
+    host.endsWith(".internal")
+  ) {
+    return true;
+  }
+  const family = net.isIP(host);
+  return family === 4 ? isPrivateIPv4(host) : family === 6 && isPrivateIPv6(host);
+};
+
+const privateDestinationError = (): TypeError =>
+  new TypeError("webhook private or internal destinations require allowPrivateDestinations");
+
+const normalizeUrl = (
+  value: string,
+  allowHttpLoopback = false,
+  allowPrivateDestinations = false,
+): URL => {
   if (typeof value !== "string" || value.trim().length === 0 || value.length > MAX_URL_LENGTH) {
     throw new TypeError("webhook url is invalid");
   }
@@ -60,6 +188,13 @@ const normalizeUrl = (value: string, allowHttpLoopback = false): URL => {
   }
   if (url.username !== "" || url.password !== "" || url.hash !== "") {
     throw new TypeError("webhook url must not contain credentials or a fragment");
+  }
+  if (
+    url.protocol === "https:" &&
+    !allowPrivateDestinations &&
+    isPrivateDestination(url.hostname)
+  ) {
+    throw privateDestinationError();
   }
   if (url.protocol === "https:") {
     return url;
@@ -108,13 +243,15 @@ export function normalizeWebhookOptions(options: WebhookNotifierOptions): {
   timeoutMs: number;
   maxRetries: number;
   allowHttpLoopback: boolean;
+  allowPrivateDestinations: boolean;
   payloadBuilder?: WebhookNotifierOptions["payloadBuilder"];
 } {
   if (options.allowHttpLoopback !== undefined && typeof options.allowHttpLoopback !== "boolean") {
     throw new TypeError("webhook allowHttpLoopback is invalid");
   }
   const allowHttpLoopback = options.allowHttpLoopback === true;
-  const url = normalizeUrl(options.url, allowHttpLoopback);
+  const allowPrivateDestinations = options.allowPrivateDestinations === true;
+  const url = normalizeUrl(options.url, allowHttpLoopback, allowPrivateDestinations);
   const timeoutMs = options.timeoutMs ?? DEFAULT_TIMEOUT_MS;
   if (!Number.isSafeInteger(timeoutMs) || timeoutMs <= 0 || timeoutMs > MAX_TIMEOUT_MS) {
     throw new TypeError("webhook timeoutMs is invalid");
@@ -133,12 +270,54 @@ export function normalizeWebhookOptions(options: WebhookNotifierOptions): {
     timeoutMs,
     maxRetries,
     allowHttpLoopback,
+    allowPrivateDestinations:
+      allowPrivateDestinations || (url.protocol === "http:" && allowHttpLoopback),
     ...(options.payloadBuilder === undefined ? {} : { payloadBuilder: options.payloadBuilder }),
   };
 }
 
-const defaultRequest: WebhookRequestFunction = (options, body, timeoutMs) =>
-  new Promise((resolve, reject) => {
+const resolveWebhookAddress = async (
+  hostname: string,
+  timeoutMs: number,
+  signal?: AbortSignal,
+): Promise<dns.LookupAddress> => {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let removeAbortListener = (): void => undefined;
+  try {
+    const timeout = new Promise<never>((_, reject) => {
+      timer = setTimeout(
+        () => reject(new Error("webhook destination lookup timed out")),
+        timeoutMs,
+      );
+    });
+    const races: Array<Promise<dns.LookupAddress>> = [dns.promises.lookup(hostname), timeout];
+    if (signal !== undefined) {
+      const aborted = new Promise<never>((_, reject) => {
+        const onAbort = (): void => reject(new Error("webhook request timed out"));
+        if (signal.aborted) {
+          onAbort();
+          return;
+        }
+        signal.addEventListener("abort", onAbort, { once: true });
+        removeAbortListener = () => signal.removeEventListener("abort", onAbort);
+      });
+      races.push(aborted);
+    }
+    return await Promise.race(races);
+  } finally {
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
+    removeAbortListener();
+  }
+};
+
+const defaultRequest: WebhookRequestFunction = async (options, body, timeoutMs) => {
+  const resolvedAddress = await resolveWebhookAddress(options.hostname, timeoutMs, options.signal);
+  if (!options.allowPrivateDestinations && isPrivateDestination(resolvedAddress.address)) {
+    throw privateDestinationError();
+  }
+  return new Promise((resolve, reject) => {
     let settled = false;
     let removeAbortListener = (): void => undefined;
     const finish = (callback: () => void): void => {
@@ -149,29 +328,40 @@ const defaultRequest: WebhookRequestFunction = (options, body, timeoutMs) =>
       removeAbortListener();
       callback();
     };
-    const request = (options.protocol === "http:" ? http : https).request(options, (response) => {
-      const chunks: Buffer[] = [];
-      let size = 0;
-      response.on("data", (chunk: Buffer | string) => {
-        size += Buffer.byteLength(chunk);
-        if (size > MAX_RESPONSE_BYTES) {
-          request.destroy();
-          finish(() => reject(new Error("webhook response body exceeded limit")));
-          return;
-        }
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
-      });
-      response.once("error", (error: unknown) => finish(() => reject(error)));
-      response.once("end", () =>
-        finish(() =>
-          resolve({
-            statusCode: response.statusCode ?? 0,
-            headers: response.headers,
-            body: Buffer.concat(chunks).toString("utf8"),
-          }),
-        ),
-      );
-    });
+    const { allowPrivateDestinations: _allowPrivateDestinations, ...nodeOptions } = options;
+    const request = (options.protocol === "http:" ? http : https).request(
+      {
+        ...nodeOptions,
+        lookup: (
+          _hostname: string,
+          _lookupOptions: unknown,
+          callback: (error: Error | null, address: string, family: number) => void,
+        ) => callback(null, resolvedAddress.address, resolvedAddress.family),
+      } as never,
+      (response) => {
+        const chunks: Buffer[] = [];
+        let size = 0;
+        response.on("data", (chunk: Buffer | string) => {
+          size += Buffer.byteLength(chunk);
+          if (size > MAX_RESPONSE_BYTES) {
+            request.destroy();
+            finish(() => reject(new Error("webhook response body exceeded limit")));
+            return;
+          }
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+        });
+        response.once("error", (error: unknown) => finish(() => reject(error)));
+        response.once("end", () =>
+          finish(() =>
+            resolve({
+              statusCode: response.statusCode ?? 0,
+              headers: response.headers,
+              body: Buffer.concat(chunks).toString("utf8"),
+            }),
+          ),
+        );
+      },
+    );
     const onAbort = (): void => {
       request.destroy();
     };
@@ -189,6 +379,7 @@ const defaultRequest: WebhookRequestFunction = (options, body, timeoutMs) =>
     });
     request.end(body);
   });
+};
 
 const requestWithTimeout = async (
   request: WebhookRequestFunction,
@@ -284,6 +475,7 @@ export async function sendWebhookAlert(
       "content-type": "application/json",
       "content-length": Buffer.byteLength(body, "utf8"),
     },
+    allowPrivateDestinations: normalized.allowPrivateDestinations,
   };
   let attempt = 0;
   while (true) {

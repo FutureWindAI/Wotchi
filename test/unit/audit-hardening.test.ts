@@ -341,3 +341,42 @@ test("testAlert reports notifier failures from its own queue job", async () => {
   assert.equal(client.getDiagnostics().notifierFailures, 1);
   assert.equal(alerts.length, 1);
 });
+
+test("final alert serialization redacts hostile credential context", async () => {
+  const { alerts, notifier } = collect();
+  const canaries = [
+    "WotchiXApiAlertCanary",
+    "WotchiDbPasswordAlertCanary",
+    "WotchiCookieAlertCanary",
+    "WotchiSignatureAlertCanary",
+    "WotchiEncodedAlertCanary",
+    "WotchiWebhookPathAlertCanary",
+  ];
+  const client = createWotchi({
+    service: "orders-api",
+    environment: "production",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+
+  client.captureEvent({
+    level: "error",
+    message: "hostile metadata",
+    error: new Error("hostile metadata"),
+    context: {
+      xApiKey: canaries[0],
+      dbPassword: canaries[1],
+      cookie: "Cookie: session=" + canaries[2],
+      signatureUrl: "https://hooks.example.test/callback?signature=" + canaries[3],
+      encodedUrl: "https://hooks.example.test/callback?t%6fken=" + canaries[4],
+      webhookUrl: "https://hooks.example.test/services/" + canaries[5],
+      authorization: "Basic V290Y2hpQmFzaWNDYW5hcnk=",
+    },
+  });
+  await client.flush();
+
+  const serialized = JSON.stringify(alerts[0]);
+  for (const canary of canaries) {
+    assert.equal(serialized.includes(canary), false, canary + " escaped alert serialization");
+  }
+});

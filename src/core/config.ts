@@ -6,6 +6,18 @@ import type {
   WotchiNotifier,
 } from "./types.js";
 import { WotchiConfigurationError } from "./errors.js";
+import {
+  MAX_ALERT_THRESHOLD,
+  MAX_COOLDOWN_MS,
+  MAX_EVENTS_PER_WINDOW,
+  MAX_GROUPS,
+  MAX_NORMALIZATION_DEPTH,
+  MAX_NORMALIZATION_KEYS,
+  MAX_NORMALIZATION_STACK_LENGTH,
+  MAX_NORMALIZATION_STRING_LENGTH,
+  MAX_PENDING_ALERTS,
+  MAX_WINDOW_MS,
+} from "./limits.js";
 
 export { WotchiConfigurationError };
 
@@ -70,12 +82,13 @@ const readPositiveInteger = (
   parent: Record<string, unknown> | undefined,
   field: string,
   defaultValue: number,
+  maximum: number,
 ): number => {
   const value = parent?.[field];
   if (value === undefined) {
     return defaultValue;
   }
-  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0) {
+  if (typeof value !== "number" || !Number.isSafeInteger(value) || value <= 0 || value > maximum) {
     return fail(field);
   }
   return value;
@@ -237,13 +250,20 @@ const normalizeNotifiers = (value: unknown): readonly WotchiNotifier[] => {
   }
   for (let index = 0; index < value.length; index += 1) {
     const notifier = value[index];
-    if (
-      !isRecord(notifier) ||
-      typeof notifier.name !== "string" ||
-      notifier.name.trim().length === 0 ||
-      typeof notifier.send !== "function"
-    ) {
-      return fail(`notifiers[${index}]`);
+    const valid = (() => {
+      try {
+        return (
+          isRecord(notifier) &&
+          typeof notifier.name === "string" &&
+          notifier.name.trim().length > 0 &&
+          typeof notifier.send === "function"
+        );
+      } catch {
+        return false;
+      }
+    })();
+    if (!valid) {
+      return fail("notifiers[" + index + "]");
     }
   }
   return Object.freeze([...value] as WotchiNotifier[]);
@@ -308,22 +328,37 @@ export function validateConfig(config: WotchiConfig): Readonly<NormalizedWotchiC
     ...(links === undefined ? {} : { links }),
     rules: normalizeRules(config.rules),
     grouping: Object.freeze({
-      windowMs: readPositiveInteger(grouping, "windowMs", 60_000),
-      alertThreshold: readPositiveInteger(grouping, "alertThreshold", 3),
-      cooldownMs: readPositiveInteger(grouping, "cooldownMs", 900_000),
-      maxGroups: readPositiveInteger(grouping, "maxGroups", 200),
-      maxEventsPerWindow: readPositiveInteger(grouping, "maxEventsPerWindow", 100),
+      windowMs: readPositiveInteger(grouping, "windowMs", 60_000, MAX_WINDOW_MS),
+      alertThreshold: readPositiveInteger(grouping, "alertThreshold", 3, MAX_ALERT_THRESHOLD),
+      cooldownMs: readPositiveInteger(grouping, "cooldownMs", 900_000, MAX_COOLDOWN_MS),
+      maxGroups: readPositiveInteger(grouping, "maxGroups", 200, MAX_GROUPS),
+      maxEventsPerWindow: readPositiveInteger(
+        grouping,
+        "maxEventsPerWindow",
+        100,
+        MAX_EVENTS_PER_WINDOW,
+      ),
     }),
     queue: Object.freeze({
-      maxPendingAlerts: readPositiveInteger(queue, "maxPendingAlerts", 100),
+      maxPendingAlerts: readPositiveInteger(queue, "maxPendingAlerts", 100, MAX_PENDING_ALERTS),
       concurrency: 1,
     }),
     privacy: Object.freeze({
       redactKeys: normalizeRedactKeys(privacy),
-      maxDepth: readPositiveInteger(privacy, "maxDepth", 5),
-      maxKeys: readPositiveInteger(privacy, "maxKeys", 100),
-      maxStringLength: readPositiveInteger(privacy, "maxStringLength", 500),
-      maxStackLength: readPositiveInteger(privacy, "maxStackLength", 4_000),
+      maxDepth: readPositiveInteger(privacy, "maxDepth", 5, MAX_NORMALIZATION_DEPTH),
+      maxKeys: readPositiveInteger(privacy, "maxKeys", 100, MAX_NORMALIZATION_KEYS),
+      maxStringLength: readPositiveInteger(
+        privacy,
+        "maxStringLength",
+        500,
+        MAX_NORMALIZATION_STRING_LENGTH,
+      ),
+      maxStackLength: readPositiveInteger(
+        privacy,
+        "maxStackLength",
+        4_000,
+        MAX_NORMALIZATION_STACK_LENGTH,
+      ),
     }),
     notifiers: normalizeNotifiers(config.notifiers),
   };

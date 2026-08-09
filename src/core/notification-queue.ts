@@ -1,4 +1,5 @@
 import type { IncidentAlert, WotchiNotifier } from "./types.js";
+import { MAX_PENDING_ALERTS } from "./limits.js";
 
 export interface NotificationQueueOptions {
   maxPendingAlerts: number;
@@ -34,7 +35,11 @@ interface NotificationJob {
 const DEFAULT_FLUSH_TIMEOUT_MS = 5_000;
 
 export function createNotificationQueue(options: NotificationQueueOptions): NotificationQueue {
-  if (!Number.isSafeInteger(options.maxPendingAlerts) || options.maxPendingAlerts <= 0) {
+  if (
+    !Number.isSafeInteger(options.maxPendingAlerts) ||
+    options.maxPendingAlerts <= 0 ||
+    options.maxPendingAlerts > MAX_PENDING_ALERTS
+  ) {
     throw new RangeError("maxPendingAlerts must be a positive integer");
   }
   if (options.concurrency !== 1) {

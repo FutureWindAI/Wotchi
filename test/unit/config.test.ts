@@ -136,3 +136,43 @@ test("configuration bounds event rules and validates safe callbacks", () => {
     WotchiConfigurationError,
   );
 });
+
+test("configuration rejects values above every resource cap", () => {
+  const cases: WotchiConfig[] = [
+    { ...baseConfig(), grouping: { maxGroups: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), grouping: { maxEventsPerWindow: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), queue: { maxPendingAlerts: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxDepth: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxKeys: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxStringLength: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), privacy: { maxStackLength: Number.MAX_SAFE_INTEGER } },
+    { ...baseConfig(), grouping: { maxGroups: Infinity } },
+  ];
+
+  for (const config of cases) {
+    assert.throws(() => validateConfig(config), WotchiConfigurationError);
+  }
+});
+
+test("configuration turns a throwing notifier getter into a typed error", () => {
+  const notifier = { name: "hostile" } as { name: string; send?: unknown };
+  Object.defineProperty(notifier, "send", {
+    enumerable: true,
+    get() {
+      throw new Error("Wotchi raw getter canary");
+    },
+  });
+
+  assert.throws(
+    () =>
+      validateConfig({
+        ...baseConfig(),
+        notifiers: [notifier as never],
+      }),
+    (error: unknown) => {
+      assert.equal(error instanceof WotchiConfigurationError, true);
+      assert.equal(String(error).includes("Wotchi raw getter canary"), false);
+      return true;
+    },
+  );
+});

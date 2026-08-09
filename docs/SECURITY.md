@@ -28,11 +28,14 @@ error object.
 - The package does not contain a shared Wotchi Telegram bot token.
 
 The generic webhook notifier accepts HTTPS URLs without embedded credentials or fragments by
-default, limits custom header names/count/values, bounds the versioned JSON envelope and response
-body, rejects redirects, and limits timeout/retry behavior. HTTP is accepted only for explicit
-loopback opt-in. The destination is application-owned configuration; do not accept it from
-untrusted runtime input. Webhook operators should validate authentication, authorization,
-retention, and redaction again at the receiving service.
+default, rejects loopback, RFC1918, link-local, unique-local IPv6, metadata and internal DNS
+destinations, limits custom header names/count/values, bounds the versioned JSON envelope and
+response body, rejects redirects, and limits timeout/retry behavior. HTTP is accepted only for
+explicit loopback opt-in. An explicit allowPrivateDestinations opt-in exists for isolated
+development only; never derive it or the destination from untrusted runtime input. The real
+transport resolves and pins the destination address immediately before connecting. Webhook
+operators should validate authentication, authorization, retention, and redaction again at the
+receiving service.
 
 Trace and span IDs are passed through only when the host application supplies them. Wotchi does not
 install an OpenTelemetry SDK or collect trace data automatically.

@@ -122,6 +122,30 @@ test("webhook transport retries one transient response and rejects non-HTTPS des
   );
 });
 
+test("webhook rejects private HTTPS destinations unless explicitly opted in", () => {
+  const privateUrls = [
+    "https://127.0.0.1/wotchi",
+    "https://10.0.0.1/wotchi",
+    "https://169.254.169.254/latest/meta-data",
+    "https://metadata.google.internal/computeMetadata/v1",
+    "https://[::1]/wotchi",
+    "https://[::ffff:127.0.0.1]/wotchi",
+    "https://[::ffff:7f00:1]/wotchi",
+    "https://[fc00::1]/wotchi",
+    "https://[fe80::1]/wotchi",
+    "https://[::]/wotchi",
+    "https://2130706433/wotchi",
+    "https://0x7f000001/wotchi",
+  ];
+
+  for (const url of privateUrls) {
+    assert.throws(() => createWebhookNotifier({ url }), /private|internal|destination/i, url);
+    assert.doesNotThrow(() =>
+      createWebhookNotifier({ url, allowPrivateDestinations: true } as never),
+    );
+  }
+});
+
 test("webhook rejects redirects instead of following them", async () => {
   const redirecting: WebhookRequestFunction = async () => response(302);
   await assert.rejects(

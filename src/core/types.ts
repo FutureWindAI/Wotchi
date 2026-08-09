@@ -143,6 +143,7 @@ export interface WebhookNotifierOptions {
   timeoutMs?: number;
   maxRetries?: number;
   allowHttpLoopback?: boolean;
+  allowPrivateDestinations?: boolean;
   payloadBuilder?: (alert: Readonly<IncidentAlert>) => unknown;
 }
 

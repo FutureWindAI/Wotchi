@@ -30,15 +30,16 @@ application starts sending events; configuration errors do not echo supplied tok
 | `grouping.windowMs`           |  `60000` | Rolling grouping window.                                      |
 | `grouping.alertThreshold`     |      `3` | Matching events required before an alert.                     |
 | `grouping.cooldownMs`         | `900000` | Duplicate-alert suppression period.                           |
-| `grouping.maxGroups`          |    `200` | Maximum in-memory fingerprints.                               |
-| `grouping.maxEventsPerWindow` |    `100` | Maximum event timestamps retained per group.                  |
-| `queue.maxPendingAlerts`      |    `100` | Maximum queued alerts while a notifier is busy.               |
-| `privacy.maxDepth`            |      `5` | Maximum nested metadata depth.                                |
-| `privacy.maxKeys`             |    `100` | Maximum keys visited in one object.                           |
-| `privacy.maxStringLength`     |    `500` | Maximum retained string length.                               |
-| `privacy.maxStackLength`      |   `4000` | Maximum retained stack length.                                |
+| `grouping.maxGroups`          |    `200` | Maximum in-memory fingerprints; hard cap `10000`.             |
+| `grouping.maxEventsPerWindow` |    `100` | Maximum event timestamps per group; hard cap `10000`.         |
+| `queue.maxPendingAlerts`      |    `100` | Maximum queued alerts; hard cap `10000`.                      |
+| `privacy.maxDepth`            |      `5` | Maximum nested metadata depth; hard cap `20`.                 |
+| `privacy.maxKeys`             |    `100` | Maximum keys visited; hard cap `10000`.                       |
+| `privacy.maxStringLength`     |    `500` | Maximum retained string length; hard cap `32768`.             |
+| `privacy.maxStackLength`      |   `4000` | Maximum retained stack length; hard cap `32768`.              |
 
-The queue has concurrency `1` in the current release. When the queue is full, new notification work is dropped
+The queue has concurrency `1` in the current release. Values above the hard caps are rejected
+with `WotchiConfigurationError`. When the queue is full, new notification work is dropped
 and the host request is not delayed. `getDiagnostics()` exposes counters for dropped work and
 notifier failures.
 
@@ -219,6 +220,11 @@ values outside source control. See [Security](SECURITY.md).
 validates the destination, rejects embedded URL credentials and fragments, limits custom headers,
 times out requests, rejects redirects, and retries one `429` or `5xx` response. HTTP is accepted
 only for `localhost`, `127.0.0.1`, or `::1` when `allowHttpLoopback: true` is explicitly set.
+Loopback, RFC1918, link-local, unique-local IPv6, metadata and internal DNS destinations are
+rejected for HTTPS by default. Set `allowPrivateDestinations: true` only for a deliberately
+isolated development destination; never pass it values derived from requests or tenants. The real
+transport resolves the hostname immediately before connecting and pins the resolved address for
+that request.
 
 ```ts
 webhookNotifier({

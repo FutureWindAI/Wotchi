@@ -16,6 +16,7 @@ export function createWebhookNotifier(
     timeoutMs: normalized.timeoutMs,
     maxRetries: normalized.maxRetries,
     allowHttpLoopback: normalized.allowHttpLoopback,
+    allowPrivateDestinations: normalized.allowPrivateDestinations,
     ...(normalized.payloadBuilder === undefined
       ? {}
       : { payloadBuilder: normalized.payloadBuilder }),
