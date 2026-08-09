@@ -2,6 +2,10 @@
 
 All notable changes to Wotchi are documented here.
 
+## 0.1.0-beta.5 — 2026-08-09
+
+- Fixed the protected staging workflow to pass the exact release tarball as an explicit local path.
+
 ## 0.1.0-beta.4 — 2026-08-09
 
 - Added bounded generic HTTPS webhook delivery with optional headers, timeout, and one transient retry.

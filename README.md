@@ -2,7 +2,7 @@
 
 > Low-noise error alerts for Node.js services.
 
-> **Status:** Public beta (`0.1.0-beta.4`). Install with the `beta` tag; the API may evolve before the first stable release.
+> **Status:** Public beta (`0.1.0-beta.5`). Install with the `beta` tag; the API may evolve before the first stable release.
 
 [![CI](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml)

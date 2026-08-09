@@ -27,5 +27,5 @@ webhooks with actionable context and test-alert diagnostics.
 - [Contributing](../CONTRIBUTING.md) — scope, support, and pull-request expectations.
 - [Changelog](../CHANGELOG.md) — released changes.
 
-The current public version is `0.1.0-beta.4`. Use `npm install @futurewindai/wotchi@beta` until a
+The current public version is `0.1.0-beta.5`. Use `npm install @futurewindai/wotchi@beta` until a
 stable release moves the `latest` dist-tag.

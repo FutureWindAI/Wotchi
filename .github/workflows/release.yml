@@ -6,9 +6,9 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing protected Git tag to release (for example v0.1.0-beta.4)"
+        description: "Existing protected Git tag to release (for example v0.1.0-beta.5)"
         required: true
-        default: v0.1.0-beta.4
+        default: v0.1.0-beta.5
         type: string
       dist_tag:
         description: "npm distribution tag for the staged package"
@@ -212,7 +212,7 @@ jobs:
       - name: Stage package with npm trusted publishing
         run: |
           tarball="$(find release-artifact -maxdepth 1 -type f -name '*.tgz' -print -quit)"
-          npm stage publish "$tarball" --tag "${{ inputs.dist_tag }}" --registry "$NPM_REGISTRY"
+          npm stage publish "./$tarball" --tag "${{ inputs.dist_tag }}" --registry "$NPM_REGISTRY"
 
       - name: Write approval instructions
         env:
