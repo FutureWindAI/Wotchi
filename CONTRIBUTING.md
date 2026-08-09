@@ -4,7 +4,7 @@ Issues, design feedback, documentation improvements, and carefully scoped contri
 
 ## Start with Scope
 
-The current release is a small in-process incident assistant for Node.js, Express, and NestJS with console and Telegram notification. Discuss substantial changes in an issue before implementation. Features such as a hosted platform, dashboard, AI integration, extra notifiers, infrastructure collectors, or automatic remediation require a separate product decision.
+The current release is a small in-process incident assistant for Node.js, Express, and NestJS with console, Telegram, and generic HTTPS webhook delivery. Discuss substantial changes in an issue before implementation. Features such as a hosted platform, dashboard, AI integration, extra notifiers, infrastructure collectors, or automatic remediation require a separate product decision.
 
 ## Safety and Privacy
 

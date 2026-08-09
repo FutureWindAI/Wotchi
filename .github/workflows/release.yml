@@ -198,6 +198,9 @@ jobs:
           tar -tzf "$tarball" | grep -Fx 'package/dist/esm/index.js'
           tar -tzf "$tarball" | grep -Fx 'package/dist/cjs/index.js'
           tar -tzf "$tarball" | grep -Fx 'package/dist/types/index.d.ts'
+          tar -tzf "$tarball" | grep -Fx 'package/README.md'
+          tar -tzf "$tarball" | grep -Fx 'package/SECURITY.md'
+          tar -tzf "$tarball" | grep -Fx 'package/LICENSE'
           RELEASE_TAG="$RELEASE_TAG" TARBALL="$tarball" node --input-type=module -e '
             import { readFileSync } from "node:fs";
             import { basename } from "node:path";
@@ -226,4 +229,5 @@ jobs:
             echo "The workflow did not run npm publish or npm stage approve."
             echo
             echo 'Review with `npm stage list @futurewindai/wotchi`, then approve with 2FA using `npm stage approve <stage-id>`.'
+            echo 'After npm makes the version public, run `npm run verify:published-metadata -- <version>` from the matching clean tag checkout before creating the GitHub Release or announcing it.'
           } >> "$GITHUB_STEP_SUMMARY"

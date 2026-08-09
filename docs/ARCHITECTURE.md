@@ -83,7 +83,7 @@ captured a second time.
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
 - no request/response bodies, raw headers, automatic environment collection, or hosted collector in v0.1;
-- console, Telegram, and generic HTTPS webhook are the notification channels in this source revision.
+- console, Telegram, and generic HTTPS webhook are the notification channels in the current beta.
 - webhook destinations are explicit application-owned endpoints; Wotchi does not provide a hosted relay.
 - trace context is passed through from existing instrumentation; Wotchi does not install an OpenTelemetry SDK.
 

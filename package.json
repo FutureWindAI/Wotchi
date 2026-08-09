@@ -83,6 +83,7 @@
     "test": "npm run test:compile && node --test .test-dist/test/unit/*.test.js .test-dist/test/integration/express/*.test.js .test-dist/test/integration/nest/*.test.js .test-dist/test/security/*.test.js",
     "pack:dry-run": "npm run build && npm pack --dry-run --json",
     "verify:package": "npm run build && node scripts/verify-package.mjs",
+    "verify:published-metadata": "node scripts/verify-published-metadata.mjs",
     "test:compat": "npm run build && node test/compatibility/package-exports.smoke.cjs && node test/compatibility/framework-isolation.cjs",
     "test:compat:matrix": "npm run build && node scripts/run-compatibility-matrix.mjs",
     "benchmark": "npm run build && node --expose-gc scripts/run-benchmarks.mjs",

@@ -4,22 +4,17 @@ All notable changes to Wotchi are documented here.
 
 ## 0.1.0-beta.5 — 2026-08-09
 
-- Fixed the protected staging workflow to pass the exact release tarball as an explicit local path.
-
-## 0.1.0-beta.4 — 2026-08-09
-
 - Added bounded generic HTTPS webhook delivery with optional headers, timeout, and one transient retry.
 - Added actionable release, instance, request/correlation, operation/job, safe tags, stack-frame, context, links, and explicit trace/span fields.
 - Added frozen sanitized event filters/config fingerprint callbacks, alert-level `beforeSend`, fingerprint overrides, and exact environment/route rules with hook diagnostics.
 - Added a versioned webhook envelope, sanitized payload builder, explicit loopback HTTP option, and redirect/configuration guards.
 - Added structured `WotchiClient.testAlert()` results for queue, timeout, delivery, and notifier-failure diagnostics.
 - Added production deployment, uptime-monitor, graceful-shutdown, and worker recipes.
-
-- Closed the alert-boundary redaction bypasses with serialized-notifier regression coverage.
+- Closed alert-boundary redaction bypasses with serialized-notifier regression coverage.
 - Added hard resource caps, prototype-safe normalization, and typed configuration failures for hostile getters.
 - Rejected private and metadata HTTPS webhook destinations by default and pinned resolved transport addresses.
 - Added content-digest names for local packed artifacts so they cannot be confused with published releases.
-- Fixed release staging to submit the exact gated tarball rather than repacking an unbuilt checkout.
+- Fixed the protected staging workflow to pass the exact release tarball as an explicit local path.
 
 ## 0.1.0-beta.2 — 2026-08-08
 
