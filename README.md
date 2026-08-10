@@ -2,12 +2,12 @@
 
 > Low-noise error alerts for Node.js services.
 
-> **Status:** Public beta (`0.1.0-beta.5`). Install with the `beta` tag; the API may evolve before the first stable release.
+> **Status:** Public beta (`0.1.0-beta.6`). The API may evolve before the first stable release.
 
 [![CI](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml)
 [![npm](https://img.shields.io/npm/v/%40futurewindai%2Fwotchi?label=npm%20beta)](https://www.npmjs.com/package/@futurewindai/wotchi)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/LICENSE)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.6/LICENSE)
 [![Node.js 18–26](https://img.shields.io/badge/node-18%E2%80%9326-339933?logo=node.js&logoColor=white)](https://nodejs.org/en/about/previous-releases)
 
 Wotchi captures application errors in-process, removes sensitive values, groups repeated failures, and delivers bounded console, Telegram, or HTTPS webhook alerts without changing framework response handling. It is a signal-conditioning layer, not a replacement for a full observability platform.
@@ -67,12 +67,45 @@ notifier.
 | Generic HTTPS webhook notifier            | Route bounded JSON alerts to an existing internal alert destination.                                           |
 | Actionable context and trace passthrough  | Include route, release, request/correlation IDs, operation/job, safe tags, links, and existing trace/span IDs. |
 | Optional status observation and JSON logs | Observe direct `401`/`403`/`429`/`5xx` responses and emit collector-friendly JSON.                             |
+| Optional diagnostics exporter             | Expose aggregate Wotchi health counters to an existing Prometheus-compatible `/metrics` endpoint.              |
+| Optional overload admission               | Drop capture work before normalization at a measured rate and emit one sanitized overload signal.              |
+| Notifier isolation and shutdown           | Bound slow destinations, open circuits after repeated failures, and drain safely during termination.           |
+| Optional runtime pressure watcher         | Threshold CPU, RSS, heap, event-loop delay, or pending alerts with numeric-only local samples.                 |
 
 ## When to use Wotchi
 
 Use Wotchi when an Express or NestJS service needs low-noise, privacy-conscious alerts without
 adding a collector, database, or hosted account. Keep a full observability platform when you need
 durable incident history, cross-replica deduplication, dashboards, traces, or paging workflows.
+
+## Performance evidence
+
+The package has zero direct runtime dependencies and keeps capture, grouping, and notification work
+bounded. On a Node.js 22/macOS arm64 benchmark run of beta.6, capture p95/p99 was
+`0.036 ms`/`0.036 ms`, duplicate-storm retained heap was `0.194 MiB`, and the packed artifact was
+`60,534 bytes`. Prometheus rendering p95 was `0.0048 ms`. The queue benchmark admitted `101` alerts while a notifier was blocked, capped
+pending work at `100`, and kept Express and NestJS responses completing. These are reproducible local
+measurements, not production guarantees; repeat `npm run benchmark` and `npm run benchmark:queue`
+on your runtime and workload. See [performance evidence](docs/PERFORMANCE.md).
+
+The exporter does not open a server or send data. Attach it to a protected endpoint owned
+by the host application:
+
+```ts
+import { createWotchiPrometheusExporter } from "@futurewindai/wotchi";
+
+const metrics = createWotchiPrometheusExporter(wotchi);
+app.get("/metrics", (_request, response) => {
+  response.setHeader("Content-Type", metrics.contentType);
+  response.send(metrics.render());
+});
+```
+
+Beta.6 also supports opt-in admission control, notifier timeouts/circuits, graceful shutdown, and a
+numeric-only runtime watcher.
+
+It emits only aggregate counters and queue/group gauges. Prometheus, Grafana, or another existing
+collector remains responsible for scraping, authentication, retention, and dashboards.
 
 ## How it works
 
@@ -108,13 +141,28 @@ const wotchi = createWotchi({
 app.use(wotchiErrorHandler(wotchi));
 ```
 
-NestJS applications register the delegating global filter once after creating the application:
+NestJS applications can register Wotchi from the root module, keeping `main.ts` focused on
+application bootstrap:
 
 ```ts
-import { registerWotchiNest } from "@futurewindai/wotchi/nest";
+import { Module } from "@nestjs/common";
+import { consoleNotifier } from "@futurewindai/wotchi";
+import { WotchiModule } from "@futurewindai/wotchi/nest";
 
-registerWotchiNest(app, wotchi);
+@Module({
+  imports: [
+    WotchiModule.forRoot({
+      service: "orders-api",
+      environment: "production",
+      notifiers: [consoleNotifier()],
+    }),
+  ],
+})
+export class AppModule {}
 ```
+
+For a custom dependency-injected `APP_FILTER`, keep its response and logging behavior, disable the
+automatic Wotchi filter, and wrap it with `withWotchiNestFilter`. See the [NestJS API](docs/API.md#nestjs-entry-point).
 
 The package keeps compatibility with Node.js `>=18.18.0` and is tested across Node.js 18–26. Node.js 22 or 24 LTS is recommended for production. Express and NestJS adapters are optional subpath integrations, so applications only load the framework adapter they use.
 
@@ -146,7 +194,7 @@ function requiredEnv(name: string): string {
 }
 ```
 
-Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/CONFIGURATION.md) for notifier and security options.
+Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md) for notifier and security options.
 
 ## HTTPS webhook alerts
 
@@ -212,7 +260,7 @@ Wotchi keeps grouping and cooldown state in one process. Replicas have independe
 reset groups, and a serverless instance can terminate before asynchronous delivery completes. An
 in-process SDK cannot reliably detect an OOM kill, frozen event loop, host failure, or unavailable
 network. Pair it with an external uptime monitor and keep graceful shutdown explicit; see the
-[production recipe](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/examples/production-recipe/README.md).
+[production recipe](https://github.com/FutureWindAI/Wotchi/blob/main/examples/production-recipe/README.md).
 
 ## Process monitoring
 
@@ -236,25 +284,25 @@ const monitor = registerWotchiProcessMonitor(wotchi);
 
 ## Documentation
 
-- [Getting started](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/GETTING_STARTED.md)
-- [Examples](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/EXAMPLES.md)
-- [API reference](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/API.md)
-- [Configuration](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/CONFIGURATION.md)
-- [Compatibility](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/COMPATIBILITY.md)
-- [Performance](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/PERFORMANCE.md)
-- [Architecture](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/ARCHITECTURE.md)
-- [Roadmap](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/ROADMAP.md)
-- [Troubleshooting](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/TROUBLESHOOTING.md)
-- [FAQ](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/FAQ.md)
-- [Security and privacy](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/SECURITY.md)
-- [Threat model](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/docs/THREAT_MODEL.md)
-- [Contributing](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/CONTRIBUTING.md)
-- [Changelog](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/CHANGELOG.md)
+- [Getting started](https://github.com/FutureWindAI/Wotchi/blob/main/docs/GETTING_STARTED.md)
+- [Examples](https://github.com/FutureWindAI/Wotchi/blob/main/docs/EXAMPLES.md)
+- [API reference](https://github.com/FutureWindAI/Wotchi/blob/main/docs/API.md)
+- [Configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md)
+- [Compatibility](https://github.com/FutureWindAI/Wotchi/blob/main/docs/COMPATIBILITY.md)
+- [Performance](https://github.com/FutureWindAI/Wotchi/blob/main/docs/PERFORMANCE.md)
+- [Architecture](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ARCHITECTURE.md)
+- [Roadmap](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ROADMAP.md)
+- [Troubleshooting](https://github.com/FutureWindAI/Wotchi/blob/main/docs/TROUBLESHOOTING.md)
+- [FAQ](https://github.com/FutureWindAI/Wotchi/blob/main/docs/FAQ.md)
+- [Security and privacy](https://github.com/FutureWindAI/Wotchi/blob/main/docs/SECURITY.md)
+- [Threat model](https://github.com/FutureWindAI/Wotchi/blob/main/docs/THREAT_MODEL.md)
+- [Contributing](https://github.com/FutureWindAI/Wotchi/blob/main/CONTRIBUTING.md)
+- [Changelog](https://github.com/FutureWindAI/Wotchi/blob/main/CHANGELOG.md)
 - [GitHub releases](https://github.com/FutureWindAI/Wotchi/releases)
-- [Apache License 2.0](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/LICENSE)
+- [Apache License 2.0](https://github.com/FutureWindAI/Wotchi/blob/main/LICENSE)
 
 ## Security
 
-Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using the [security policy](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.5/SECURITY.md).
+Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using the [security policy](https://github.com/FutureWindAI/Wotchi/blob/main/SECURITY.md).
 
 Wotchi is open source and maintained by FutureWind AI.

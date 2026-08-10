@@ -162,7 +162,11 @@ ${
     ? `
 declare const nestApp: unknown;
 nestAdapter.registerWotchiNest(nestApp, client);
-nestAdapter.registerWotchiNestStatusObserver(nestApp, client);`
+nestAdapter.registerWotchiNestStatusObserver(nestApp, client);
+nestAdapter.WotchiModule.forRoot({ service: "module-types", environment: "test", notifiers: [consoleNotifier()] });
+nestAdapter.withWotchiNestFilter(client, {
+  catch(_exception: unknown, _host: import("@nestjs/common").ArgumentsHost): void {},
+});`
     : ""
 }
 `
@@ -175,7 +179,7 @@ ${
 }
 ${
   framework === "nest10" || framework === "nest11"
-    ? `import { registerWotchiNest, registerWotchiNestStatusObserver } from ${JSON.stringify(`${PACKAGE_NAME}/nest`)};`
+    ? `import { WotchiModule, registerWotchiNest, registerWotchiNestStatusObserver, withWotchiNestFilter } from ${JSON.stringify(`${PACKAGE_NAME}/nest`)};`
     : ""
 }
 const client = createWotchi({ service: "types", environment: "test", notifiers: [consoleNotifier()] });
@@ -192,7 +196,11 @@ ${
     ? `
 declare const nestApp: unknown;
 registerWotchiNest(nestApp, client);
-registerWotchiNestStatusObserver(nestApp, client);`
+registerWotchiNestStatusObserver(nestApp, client);
+WotchiModule.forRoot({ service: "module-types", environment: "test", notifiers: [consoleNotifier()] });
+withWotchiNestFilter(client, {
+  catch(_exception: unknown, _host: import("@nestjs/common").ArgumentsHost): void {},
+});`
     : ""
 }
 `;
@@ -209,6 +217,56 @@ const typeConfig = {
   },
   include: ["types-smoke.ts"],
 };
+
+const legacyCommonJsTypeConfig =
+  moduleFormat === "commonjs"
+    ? {
+        compilerOptions: {
+          ...typeConfig.compilerOptions,
+          module: "CommonJS",
+          moduleResolution: "Node",
+        },
+        include: ["types-smoke.ts"],
+      }
+    : undefined;
+
+const legacyStaticImportSource =
+  moduleFormat === "commonjs"
+    ? `
+import { consoleNotifier, createWotchi } from ${JSON.stringify(PACKAGE_NAME)};
+${
+  framework === "express4" || framework === "express5"
+    ? `import { wotchiErrorHandler, wotchiStatusObserver } from ${JSON.stringify(`${PACKAGE_NAME}/express`)};`
+    : ""
+}
+${
+  framework === "nest10" || framework === "nest11"
+    ? `import { WotchiModule, registerWotchiNest, registerWotchiNestStatusObserver, withWotchiNestFilter } from ${JSON.stringify(`${PACKAGE_NAME}/nest`)};`
+    : ""
+}
+const client = createWotchi({ service: "legacy-static-imports", environment: "test", notifiers: [consoleNotifier()] });
+${
+  framework === "express4" || framework === "express5"
+    ? `
+declare const expressApp: { use: (...middleware: unknown[]) => unknown };
+expressApp.use(wotchiErrorHandler(client));
+expressApp.use(wotchiStatusObserver(client, { statusCodes: [401, 403], statusClasses: ["5xx"] }));`
+    : ""
+}
+${
+  framework === "nest10" || framework === "nest11"
+    ? `
+declare const nestApp: unknown;
+registerWotchiNest(nestApp, client);
+registerWotchiNestStatusObserver(nestApp, client);
+WotchiModule.forRoot({ service: "module-types", environment: "test", notifiers: [consoleNotifier()] });
+withWotchiNestFilter(client, {
+  catch(_exception: unknown, _host: import("@nestjs/common").ArgumentsHost): void {},
+});`
+    : ""
+}
+`
+    : undefined;
 
 const smokeSource = `
 const assert = require("node:assert/strict");
@@ -230,7 +288,10 @@ const run = async () => {
       ? `
   require("reflect-metadata");
   assert.equal(typeof require("@nestjs/common").Module, "function");
-  assert.equal(typeof require(${JSON.stringify(`${PACKAGE_NAME}/nest`)}).registerWotchiNest, "function");`
+  const nestAdapter = require(${JSON.stringify(`${PACKAGE_NAME}/nest`)});
+  assert.equal(typeof nestAdapter.registerWotchiNest, "function");
+  assert.equal(typeof nestAdapter.withWotchiNestFilter, "function");
+  assert.equal(typeof nestAdapter.WotchiModule, "function");`
       : ""
   }
 };
@@ -256,7 +317,10 @@ ${
     ? `
 await import("reflect-metadata");
 assert.equal(typeof (await import("@nestjs/common")).Module, "function");
-assert.equal(typeof (await import(${JSON.stringify(`${PACKAGE_NAME}/nest`)})).registerWotchiNest, "function");`
+const nestAdapter = await import(${JSON.stringify(`${PACKAGE_NAME}/nest`)});
+assert.equal(typeof nestAdapter.registerWotchiNest, "function");
+assert.equal(typeof nestAdapter.withWotchiNestFilter, "function");
+assert.equal(typeof nestAdapter.WotchiModule, "function");`
     : ""
 }
 `;
@@ -269,6 +333,7 @@ try {
     "--legacy-peer-deps",
     fixtureTarball,
     ...frameworkDependencies[framework],
+    ...(moduleFormat === "commonjs" ? ["typescript@4.6.4"] : []),
   ]);
   const smokeFile = join(fixture, moduleFormat === "esm" ? "smoke.mjs" : "smoke.cjs");
   writeFileSync(smokeFile, moduleFormat === "esm" ? esmSmokeSource : smokeSource);
@@ -276,6 +341,18 @@ try {
   writeFileSync(join(fixture, "types-smoke.ts"), typesSmokeSource);
   writeFileSync(join(fixture, "tsconfig.json"), JSON.stringify(typeConfig, null, 2));
   run(resolve(cwd, "node_modules/.bin/tsc"), ["-p", "tsconfig.json"]);
+  if (legacyCommonJsTypeConfig !== undefined) {
+    writeFileSync(join(fixture, "types-legacy-node-smoke.ts"), legacyStaticImportSource);
+    writeFileSync(
+      join(fixture, "tsconfig.legacy-node.json"),
+      JSON.stringify(
+        { ...legacyCommonJsTypeConfig, include: ["types-legacy-node-smoke.ts"] },
+        null,
+        2,
+      ),
+    );
+    run(resolve(fixture, "node_modules/.bin/tsc"), ["-p", "tsconfig.legacy-node.json"]);
+  }
   console.log(
     JSON.stringify({
       node: process.version,

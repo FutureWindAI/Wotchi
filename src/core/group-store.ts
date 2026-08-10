@@ -82,14 +82,9 @@ export function createGroupStore(options: GroupStoreOptions): GroupStore {
   });
 
   const evictLeastRecent = (): void => {
-    let candidate: StoredGroup | undefined;
-    for (const group of groups.values()) {
-      if (candidate === undefined || group.lastSeenMs < candidate.lastSeenMs) {
-        candidate = group;
-      }
-    }
-    if (candidate !== undefined) {
-      groups.delete(candidate.fingerprint);
+    const oldestFingerprint = groups.keys().next().value;
+    if (typeof oldestFingerprint === "string") {
+      groups.delete(oldestFingerprint);
       evicted += 1;
     }
   };
@@ -118,6 +113,9 @@ export function createGroupStore(options: GroupStoreOptions): GroupStore {
           now,
         }),
       };
+      groups.set(fingerprint, group);
+    } else {
+      groups.delete(fingerprint);
       groups.set(fingerprint, group);
     }
     group.lastSeenMs = timestamp;

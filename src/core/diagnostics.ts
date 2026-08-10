@@ -7,6 +7,8 @@ export interface DiagnosticsState {
   filterFailures: number;
   beforeSendFailures: number;
   eventsSuppressed: number;
+  eventsDroppedOverload: number;
+  capturesAfterShutdown: number;
 }
 
 export function createDiagnosticsState(): DiagnosticsState {
@@ -17,6 +19,8 @@ export function createDiagnosticsState(): DiagnosticsState {
     filterFailures: 0,
     beforeSendFailures: 0,
     eventsSuppressed: 0,
+    eventsDroppedOverload: 0,
+    capturesAfterShutdown: 0,
   };
 }
 
@@ -30,6 +34,8 @@ export function snapshotDiagnostics(
     | "filterFailures"
     | "beforeSendFailures"
     | "eventsSuppressed"
+    | "eventsDroppedOverload"
+    | "capturesAfterShutdown"
   >,
 ): Readonly<WotchiDiagnostics> {
   return Object.freeze({
@@ -39,6 +45,8 @@ export function snapshotDiagnostics(
     filterFailures: state.filterFailures,
     beforeSendFailures: state.beforeSendFailures,
     eventsSuppressed: state.eventsSuppressed,
+    eventsDroppedOverload: state.eventsDroppedOverload,
+    capturesAfterShutdown: state.capturesAfterShutdown,
     ...values,
   });
 }

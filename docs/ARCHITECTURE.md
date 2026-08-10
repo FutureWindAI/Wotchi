@@ -3,11 +3,12 @@
 ## Current status
 
 Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The
-published `0.1.0-beta.5` package provides bounded input handling, URL-aware redaction,
+Beta.6 provides bounded input handling, URL-aware redaction,
 fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction,
-diagnostics, serial notification queueing, text console, Telegram, opt-in process monitoring,
+diagnostics, bounded notification queueing, notifier timeouts/circuit protection, text console, Telegram, opt-in process monitoring,
 actionable context, safe event controls, a generic HTTPS webhook notifier, JSON console output,
-optional HTTP status observation, and the production recipe.
+optional HTTP status observation, opt-in overload admission, graceful shutdown, an opt-in runtime
+watcher, and the production recipe.
 
 ## Consumer-facing package shape
 
@@ -35,9 +36,12 @@ src/
   core/group-store.ts              bounded groups and oldest eviction
   core/incident-policy.ts          threshold, cooldown, and severity
   core/incident-builder.ts         deterministic sanitized alerts
-  core/notification-queue.ts       serial bounded notifier queue
+  core/notification-queue.ts       bounded notifier queue with timeouts/circuits
+  core/admission.ts                optional pre-normalization token bucket
   core/process-monitor.ts          opt-in uncaught-exception observation
   core/diagnostics.ts              frozen counter snapshots
+  core/prometheus.ts               pure Prometheus diagnostics renderer
+  core/runtime-monitor.ts          opt-in numeric process-pressure watcher
   core/client.ts                   framework-independent orchestration
   notifiers/console.ts              bounded console formatting
   notifiers/telegram-format.ts      bounded HTML alert formatting
@@ -48,17 +52,22 @@ src/
   notifiers/webhook.ts              generic webhook notifier adapter
   integrations/express/index.ts    Express-only public boundary
   integrations/express/status-observer.ts  opt-in direct-response observation
+  integrations/nest/capture.ts    shared safe Nest exception capture
+  integrations/nest/filter-wrapper.ts  preserves custom Nest filter ownership
+  integrations/nest/module.ts     AppModule provider and global-filter integration
   integrations/nest/index.ts      NestJS-only public boundary
 ```
 
 Future changes should add behavior behind these contracts:
 
 ```text
-capture -> normalize -> redact -> frozen filter/fingerprint -> rules -> group -> policy
-        -> alert/links -> frozen beforeSend -> bounded queue -> console/Telegram/webhook notifier
+capture -> optional admission -> normalize -> redact -> frozen filter/fingerprint -> rules -> group -> policy
+        -> alert/links -> frozen beforeSend -> bounded queue -> isolated notifier attempts
+optional getDiagnostics() -> Prometheus text renderer -> host-owned metrics endpoint
+optional runtime watcher -> bounded numeric runtime event -> same sanitized capture path
 ```
 
-Capture performs bounded normalization and redaction before frozen user filters and fingerprint callbacks. Grouping and policy produce an alert with optional correlation/operation/job/tags and owner-configured HTTPS links; a frozen `beforeSend` alert hook may transform or suppress it before queue admission. Queue work runs with concurrency one and is never awaited by framework error handling. The same core capture path is available to background workers and queue processors; the host remains responsible for retry, acknowledgement, and dead-letter behavior. Express calls `next(error)` exactly once; NestJS calls `super.catch(exception, host)` exactly once. Telegram and webhook work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush.
+Capture performs optional bounded admission, then normalization and redaction before frozen user filters and fingerprint callbacks. Grouping and policy produce an alert with optional correlation/operation/job/tags and owner-configured HTTPS links; a frozen `beforeSend` alert hook may transform or suppress it before queue admission. Queue work uses one bounded alert worker, dispatches notifiers independently, and applies per-notifier timeouts/circuits; it is never awaited by framework error handling. `shutdown()` closes admission and drains accepted work within a caller-supplied deadline. The same core capture path is available to background workers and queue processors; the host remains responsible for retry, acknowledgement, and dead-letter behavior. Express calls `next(error)` exactly once. For NestJS, `WotchiModule.forRoot` provides one client and a safe global filter from `AppModule`; `withWotchiNestFilter` captures an existing `APP_FILTER` while leaving its response behavior intact. Bootstrap registration remains available for applications that need it. Telegram and webhook work is bounded and asynchronous. Process monitoring uses `uncaughtExceptionMonitor` only, captures a critical event, and does not suppress or change the host process exit behavior; an immediately terminating process is not promised a synchronous network flush. The runtime watcher is separate, opt-in, numeric-only, and unref'd.
 
 The status observer is separate from error handling and runs on the response `finish` event. It
 captures only configured status codes/classes, supports ignored noisy codes and a per-status

@@ -12,7 +12,9 @@ HTTPS webhooks, and `testAlert()` diagnostics.
 import {
   consoleNotifier,
   createWotchi,
+  createWotchiPrometheusExporter,
   registerWotchiProcessMonitor,
+  registerWotchiRuntimeWatcher,
   telegramNotifier,
   webhookNotifier,
 } from "@futurewindai/wotchi";
@@ -20,13 +22,15 @@ import {
 
 ### Functions
 
-| Export                                 | Contract                                                                                                                                                                          |
-| -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `createWotchi(config)`                 | Validates and freezes configuration, then returns an isolated `WotchiClient`.                                                                                                     |
-| `consoleNotifier(options?)`            | Creates a notifier that writes bounded text or one-line JSON alerts to the console or a supplied writer.                                                                          |
-| `telegramNotifier(options)`            | Creates an opt-in Telegram notifier using a bot token and destination chat ID.                                                                                                    |
-| `webhookNotifier(options)`             | Creates a bounded versioned JSON notifier; HTTPS is required by default, with explicit loopback HTTP opt-in, optional headers, payload builder, timeout, and one transient retry. |
-| `registerWotchiProcessMonitor(client)` | Opts into `uncaughtExceptionMonitor` observation without changing process exit behavior.                                                                                          |
+| Export                                           | Contract                                                                                                                                                                          |
+| ------------------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `createWotchi(config)`                           | Validates and freezes configuration, then returns an isolated `WotchiClient`.                                                                                                     |
+| `consoleNotifier(options?)`                      | Creates a notifier that writes bounded text or one-line JSON alerts to the console or a supplied writer.                                                                          |
+| `telegramNotifier(options)`                      | Creates an opt-in Telegram notifier using a bot token and destination chat ID.                                                                                                    |
+| `webhookNotifier(options)`                       | Creates a bounded versioned JSON notifier; HTTPS is required by default, with explicit loopback HTTP opt-in, optional headers, payload builder, timeout, and one transient retry. |
+| `createWotchiPrometheusExporter(client)`         | Creates a pure renderer for aggregate Wotchi diagnostics in Prometheus text format; it does not open a listener or send network traffic.                                          |
+| `registerWotchiProcessMonitor(client)`           | Opts into `uncaughtExceptionMonitor` observation without changing process exit behavior.                                                                                          |
+| `registerWotchiRuntimeWatcher(client, options?)` | Opts into bounded CPU, memory, event-loop, and pending-queue threshold events on one unref'd timer; returns `unregister()`.                                                       |
 
 ### Client methods
 
@@ -36,6 +40,7 @@ import {
 | `captureEvent(event)`                         | Captures an explicit error-level event with optional metadata, context, request, trace, fingerprint, and severity fields.                  |
 | `testAlert()`                                 | Returns a structured result distinguishing queue admission, flush timeout, notifier failure, and successful delivery.                      |
 | `flush(timeoutMs?)`                           | Waits for queued notifier work when the host explicitly needs deterministic completion.                                                    |
+| `shutdown(timeoutMs?)`                        | Closes capture admission and drains accepted notifier work within a bounded deadline.                                                      |
 | `getDiagnostics()`                            | Returns a frozen snapshot of bounded counters and queue state.                                                                             |
 
 The capture methods are synchronous and do not await network delivery. Notifier failures are
@@ -60,7 +65,8 @@ async function processOrder(job: { name: string }) {
 
 Keep job IDs, payloads, and credentials out of the context unless they are needed and safe. Wotchi
 does not acknowledge, retry, or persist jobs, and `captureException` does not wait for a notifier.
-Call `flush()` only during an intentional graceful shutdown or deterministic test.
+Call `shutdown()` during an intentional graceful shutdown; use `flush()` for a non-closing
+deterministic test.
 
 `WotchiEventInput.alertThreshold` is optional and applies only to that event. The status observer
 uses it internally when its adapter-specific `alertThreshold` is configured; ordinary errors keep
@@ -77,6 +83,47 @@ be a bounded string or callback. `beforeSend` receives a frozen, sanitized `Inci
 return `null` to suppress it or a bounded alert to transform it. Callback work is synchronous and
 should remain short; hook failures are isolated and reflected in diagnostics.
 
+`queue.notifierTimeoutMs` bounds each notifier independently. `queue.notifierCircuitBreaker` opens
+after repeated failures so one unhealthy destination does not continually consume delivery time.
+`overload` is an opt-in pre-normalization token bucket for high-volume processes. Its counters and
+the notifier protection counters are available through `getDiagnostics()` and the optional
+Prometheus renderer.
+
+### Prometheus diagnostics exporter
+
+The exporter reads a fresh `getDiagnostics()` snapshot each time `render()` is called:
+
+```ts
+const metrics = createWotchiPrometheusExporter(wotchi);
+
+app.get("/metrics", (_request, response) => {
+  response.setHeader("Content-Type", metrics.contentType);
+  response.send(metrics.render());
+});
+```
+
+The host owns route authentication, scraping, retention, and aggregation. Wotchi emits fixed
+aggregate counters and gauges only; it does not include stacks, fingerprints, request data, routes,
+or secrets and does not install an OpenTelemetry SDK.
+
+## Runtime watcher
+
+```ts
+const watcher = registerWotchiRuntimeWatcher(wotchi, {
+  intervalMs: 5_000,
+  cpuPercent: 90,
+  rssBytes: 1_000_000_000,
+  eventLoopDelayMs: 100,
+  pendingAlerts: 80,
+  notifierFailures: 10,
+});
+// call watcher.unregister() before the host exits
+```
+
+The watcher is disabled unless registered, keeps numeric samples bounded, and sends no automatic
+network telemetry. Its `notifierFailures` threshold is an interval delta, so old failures do not
+repeat after recovery. It is an incident signal, not a replacement for a full runtime metrics agent.
+
 ## Public types
 
 The root exports the public contracts used by consumers and adapters:
@@ -86,8 +133,9 @@ The root exports the public contracts used by consumers and adapters:
 `WotchiClient`, `WotchiConfig`, `WotchiDiagnostics`, `WotchiEventFilter`, `WotchiEventInput`,
 `WotchiEventKind`, `WotchiFingerprintCallback`, `WotchiFingerprintOverride`, `WotchiIncidentRule`,
 `WotchiLinkTemplates`, `WotchiLinks`, `WotchiNotifier`, `WotchiRequestContext`, `WotchiTags`,
-`WotchiTestAlertResult`, `WotchiTestAlertStatus`, `WotchiTraceContext`, `NormalizedWotchiConfig`, `ProcessMonitorHandle`,
-and `WotchiConfigurationError`.
+`WotchiTestAlertResult`, `WotchiTestAlertStatus`, `WotchiTraceContext`, `NormalizedWotchiConfig`,
+`ProcessMonitorHandle`, `WotchiPrometheusExporter`, `WotchiRuntimeWatcherHandle`,
+`WotchiRuntimeWatcherOptions`, `WotchiConfigurationError`, and `PROMETHEUS_CONTENT_TYPE`.
 
 ## Express entry point
 
@@ -107,8 +155,9 @@ app.use(wotchiErrorHandler(wotchi, options?));
 ```
 
 Register the handler after application routes and before the existing final error handler. The
-adapter captures the error, then calls Express `next(error)` exactly once. It does not replace the
-application's response handler.
+adapter calls Express `next(error)` exactly once, then captures the error when the response finishes
+so its request metadata contains the final status selected by the application's error handler. It
+does not replace the application's response handler.
 
 `wotchiStatusObserver` is optional and observes only selected completed HTTP responses. It does
 not read bodies or headers. Its default selection is `401`, `403`, `429`, and `5xx`; configure
@@ -125,10 +174,14 @@ The Express subpath also exports the `WotchiStatusClass` and `WotchiStatusObserv
 
 ```ts
 import {
+  withWotchiNestFilter,
   registerWotchiNest,
   registerWotchiNestStatusObserver,
+  WotchiModule,
+  WOTCHI_CLIENT,
 } from "@futurewindai/wotchi/nest";
 
+WotchiModule.forRoot(config, { registerGlobalFilter? });
 registerWotchiNest(app, wotchi, options?);
 registerWotchiNestStatusObserver(app, wotchi, {
   statusCodes: [401, 403, 429],
@@ -136,9 +189,48 @@ registerWotchiNestStatusObserver(app, wotchi, {
 });
 ```
 
-Register once after `NestFactory.create()`. The adapter delegates to NestJS's normal exception
-filter chain after capture. The status observer is an additional opt-in for NestJS applications
-using the Express platform adapter; Fastify status observation is not advertised by this release.
+`WotchiModule.forRoot(config)` is the primary integration. It registers one `WOTCHI_CLIENT`
+provider and a safe global filter, so normal controller errors are captured without code in
+`main.ts`. It supports Nest applications using `@nestjs/platform-express`. Inject `WOTCHI_CLIENT`
+when a provider needs explicit worker or queue capture.
+
+For an existing dependency-injected `APP_FILTER`, disable the module's automatic filter and wrap
+the existing filter. The wrapper captures first and then calls the original filter once, preserving
+its status, response body, and logging policy:
+
+```ts
+import { Catch, Injectable, Module } from "@nestjs/common";
+import { APP_FILTER } from "@nestjs/core";
+import type { WotchiClient } from "@futurewindai/wotchi";
+import { withWotchiNestFilter, WotchiModule, WOTCHI_CLIENT } from "@futurewindai/wotchi/nest";
+
+@Catch()
+@Injectable()
+class AppExceptionFilter {
+  catch(error: unknown, host: unknown): void {
+    // Keep the application's existing response and logging logic here.
+  }
+}
+
+@Module({
+  imports: [WotchiModule.forRoot(config, { registerGlobalFilter: false })],
+  providers: [
+    AppExceptionFilter,
+    {
+      provide: APP_FILTER,
+      useFactory: (wotchi: WotchiClient, filter: AppExceptionFilter) =>
+        withWotchiNestFilter(wotchi, filter),
+      inject: [WOTCHI_CLIENT, AppExceptionFilter],
+    },
+  ],
+})
+export class AppModule {}
+```
+
+`registerWotchiNest(app, wotchi)` remains available for bootstrap-based applications. When using
+it with a static filter added through `app.useGlobalFilters(...)`, add that filter first and then
+register Wotchi. The status observer is an additional opt-in for NestJS applications using the
+Express platform adapter; Fastify status observation is not advertised by this release.
 
 ## Structured console output
 

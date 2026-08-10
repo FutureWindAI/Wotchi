@@ -8,6 +8,9 @@ import type {
 import { WotchiConfigurationError } from "./errors.js";
 import {
   MAX_ALERT_THRESHOLD,
+  MAX_CAPTURE_RATE,
+  MAX_CIRCUIT_BREAKER_COOLDOWN_MS,
+  MAX_CIRCUIT_BREAKER_FAILURES,
   MAX_COOLDOWN_MS,
   MAX_EVENTS_PER_WINDOW,
   MAX_GROUPS,
@@ -16,6 +19,7 @@ import {
   MAX_NORMALIZATION_STACK_LENGTH,
   MAX_NORMALIZATION_STRING_LENGTH,
   MAX_PENDING_ALERTS,
+  MAX_NOTIFIER_TIMEOUT_MS,
   MAX_WINDOW_MS,
 } from "./limits.js";
 
@@ -60,6 +64,16 @@ export interface NormalizedWotchiConfig {
   readonly queue: {
     readonly maxPendingAlerts: number;
     readonly concurrency: 1;
+    readonly notifierTimeoutMs: number;
+    readonly notifierCircuitBreaker: {
+      readonly failureThreshold: number;
+      readonly cooldownMs: number;
+    };
+  };
+  readonly overload?: {
+    readonly maxEventsPerSecond: number;
+    readonly burst: number;
+    readonly alertCooldownMs: number;
   };
   readonly privacy: {
     readonly redactKeys: readonly string[];
@@ -309,7 +323,12 @@ export function validateConfig(config: WotchiConfig): Readonly<NormalizedWotchiC
 
   const grouping = readOptionalRecord(config.grouping, "grouping");
   const queue = readOptionalRecord(config.queue, "queue");
+  const notifierCircuitBreaker = readOptionalRecord(
+    queue?.notifierCircuitBreaker,
+    "queue.notifierCircuitBreaker",
+  );
   const privacy = readOptionalRecord(config.privacy, "privacy");
+  const overload = readOptionalRecord(config.overload, "overload");
   const links = normalizeLinks(config.links);
   const concurrency = queue?.concurrency;
   if (concurrency !== undefined && concurrency !== 1) {
@@ -342,7 +361,51 @@ export function validateConfig(config: WotchiConfig): Readonly<NormalizedWotchiC
     queue: Object.freeze({
       maxPendingAlerts: readPositiveInteger(queue, "maxPendingAlerts", 100, MAX_PENDING_ALERTS),
       concurrency: 1,
+      notifierTimeoutMs: readPositiveInteger(
+        queue,
+        "notifierTimeoutMs",
+        5_000,
+        MAX_NOTIFIER_TIMEOUT_MS,
+      ),
+      notifierCircuitBreaker: Object.freeze({
+        failureThreshold: readPositiveInteger(
+          notifierCircuitBreaker,
+          "failureThreshold",
+          3,
+          MAX_CIRCUIT_BREAKER_FAILURES,
+        ),
+        cooldownMs: readPositiveInteger(
+          notifierCircuitBreaker,
+          "cooldownMs",
+          30_000,
+          MAX_CIRCUIT_BREAKER_COOLDOWN_MS,
+        ),
+      }),
     }),
+    ...(overload === undefined
+      ? {}
+      : {
+          overload: Object.freeze({
+            maxEventsPerSecond: readPositiveInteger(
+              overload,
+              "maxEventsPerSecond",
+              1_000,
+              MAX_CAPTURE_RATE,
+            ),
+            burst: readPositiveInteger(
+              overload,
+              "burst",
+              readPositiveInteger(overload, "maxEventsPerSecond", 1_000, MAX_CAPTURE_RATE),
+              MAX_CAPTURE_RATE,
+            ),
+            alertCooldownMs: readPositiveInteger(
+              overload,
+              "alertCooldownMs",
+              60_000,
+              MAX_COOLDOWN_MS,
+            ),
+          }),
+        }),
     privacy: Object.freeze({
       redactKeys: normalizeRedactKeys(privacy),
       maxDepth: readPositiveInteger(privacy, "maxDepth", 5, MAX_NORMALIZATION_DEPTH),

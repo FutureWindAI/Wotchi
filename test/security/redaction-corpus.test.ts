@@ -12,6 +12,10 @@ const corpus = [
     value: "eyJhbGciOiJIUzI1NiJ9.eyJzdWIiOiJ3b3RjaGkifQ.signature-value",
   },
   {
+    name: "short-segment jwt",
+    value: "eyJhbGciOiJIUzI1NiJ9.SecretJwt_20260810.signature",
+  },
+  {
     name: "private key",
     value: "-----BEGIN PRIVATE KEY-----\nsecret\n-----END PRIVATE KEY-----", // gitleaks:allow
   },
@@ -22,6 +26,10 @@ const corpus = [
   {
     name: "stripe key",
     value: "sk-not-a-real-secret",
+  },
+  {
+    name: "single-label database authority credential",
+    value: "db-user:single-label-password@postgres:5432",
   },
 ] as const;
 

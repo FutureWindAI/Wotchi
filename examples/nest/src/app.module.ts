@@ -1,4 +1,6 @@
 import { Controller, Get, Module } from "@nestjs/common";
+import { consoleNotifier } from "@futurewindai/wotchi";
+import { WotchiModule } from "@futurewindai/wotchi/nest";
 
 @Controller()
 class ExampleController {
@@ -31,5 +33,14 @@ class ExampleController {
   }
 }
 
-@Module({ controllers: [ExampleController] })
+@Module({
+  imports: [
+    WotchiModule.forRoot({
+      service: "wotchi-nest-example",
+      environment: "local-example",
+      notifiers: [consoleNotifier()],
+    }),
+  ],
+  controllers: [ExampleController],
+})
 export class AppModule {}

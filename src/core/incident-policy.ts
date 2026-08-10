@@ -1,6 +1,6 @@
 import type { IncidentGroup, IncidentSeverity } from "./types.js";
 
-export type IncidentEventKind = "error" | "manual" | "process-monitor";
+export type IncidentEventKind = "error" | "manual" | "process-monitor" | "runtime-monitor";
 
 export interface IncidentPolicyInput {
   group: IncidentGroup;

@@ -9,15 +9,30 @@ export function createExpressErrorHandler(
 ): ErrorRequestHandler {
   return (error, request, response, next): void => {
     markExpressErrorCaptured(request);
-    try {
-      const requestContext = getExpressRequestContext(request, response, options);
-      client.captureException(
-        error,
-        undefined,
-        requestContext === undefined ? undefined : { request: requestContext },
-      );
-    } catch {
-      // A capture failure must never change Express error handling.
+    let captured = false;
+    const captureAfterResponse = (): void => {
+      if (captured) {
+        return;
+      }
+      captured = true;
+      response.off("finish", captureAfterResponse);
+      response.off("close", captureAfterResponse);
+      try {
+        const requestContext = getExpressRequestContext(request, response, options);
+        client.captureException(
+          error,
+          undefined,
+          requestContext === undefined ? undefined : { request: requestContext },
+        );
+      } catch {
+        // A capture failure must never change Express error handling.
+      }
+    };
+    if (response.writableEnded || response.finished) {
+      captureAfterResponse();
+    } else {
+      response.once("finish", captureAfterResponse);
+      response.once("close", captureAfterResponse);
     }
     next(error);
   };

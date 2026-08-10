@@ -81,6 +81,16 @@ test("preserves ordinary text and applies a bounded output length", () => {
   assert.equal((result.long as string).length <= 100, true);
 });
 
+test("applies the stack-specific limit instead of the generic string limit", () => {
+  const result = redactValue(
+    { stack: "x".repeat(8_000), ordinary: "x".repeat(8_000) },
+    { maxStringLength: 500, maxStackLength: 4_000 },
+  ) as Record<string, unknown>;
+
+  assert.equal((result.stack as string).length, 4_000);
+  assert.equal((result.ordinary as string).length, 500);
+});
+
 test("redacts credentials embedded in supported connection URLs", () => {
   const values = [
     "postgres://db-user:postgres-password@db.internal:5432/orders",
@@ -112,6 +122,18 @@ test("redacts connection URL query credentials and encoded passwords", () => {
   for (const secret of ["p%40ssword", "query-password", "ssl-password", "query-token"]) {
     assert.equal(output.includes(secret), false, `${secret} was not redacted`);
   }
+});
+
+test("redacts credentials before a single-label internal host", () => {
+  const credential = "single-label-password";
+  const output = JSON.stringify(
+    redactValue({
+      message: `database failed for db-user:${credential}@postgres:5432/orders`,
+    }),
+  );
+
+  assert.equal(output.includes(credential), false);
+  assert.equal(output.includes("postgres:5432"), true);
 });
 
 test("redacts header, query, cookie, and webhook path secret variants", () => {

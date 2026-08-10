@@ -8,7 +8,7 @@
     "start": "npm run build && node dist/main.js"
   },
   "dependencies": {
-    "@futurewindai/wotchi": "0.1.0-beta.5",
+    "@futurewindai/wotchi": "0.1.0-beta.6",
     "@nestjs/common": "^11.1.28",
     "@nestjs/core": "^11.1.28",
     "@nestjs/platform-express": "^11.1.28",

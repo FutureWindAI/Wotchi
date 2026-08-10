@@ -1,8 +1,7 @@
 # Examples
 
 The Express and NestJS examples use the packed Wotchi package and console delivery. The production
-recipe at the end of this document uses the current beta APIs and remains separate from the
-published beta examples and local-only compatibility fixtures.
+recipe at the end of this document uses the same public beta APIs.
 
 ## Express 5
 
@@ -58,8 +57,10 @@ Trigger the grouped alert:
 for i in 1 2 3; do curl -sS -i http://127.0.0.1:3102/repeat-error; done
 ```
 
-The global Wotchi filter delegates to NestJS, so NestJS keeps control of the response body and
-status code.
+The local NestJS 10 and 11 test stands import `WotchiModule` in `AppModule`, so their `main.ts`
+only creates the Nest application. The global Wotchi filter preserves Nest's standard response body
+and status contract. See the [NestJS API](API.md#nestjs-entry-point) for the custom `APP_FILTER`
+wrapper recipe.
 
 ## Manual capture
 
@@ -90,8 +91,29 @@ async function processJob(job: { type: string }) {
 
 Wotchi records a bounded, sanitized incident and returns immediately. It does not acknowledge
 the job, schedule retries, or store the payload. Avoid putting full job payloads, credentials, or
-customer data in the context. Use `await wotchi.flush()` only when the process is intentionally
-shutting down and pending notifier delivery must be drained.
+customer data in the context. Call `await wotchi.shutdown(3_000)` when the process is intentionally
+shutting down and pending notifier delivery must be drained; use `flush()` for a non-closing test.
+
+For an SQS consumer, keep the same boundary around the code that already controls deletion and
+redelivery:
+
+```ts
+try {
+  await processSqsMessage(message);
+  await deleteMessage(receiptHandle);
+} catch (error) {
+  wotchi.captureException(error, undefined, {
+    operation: "sqs.process-message",
+    job: "orders-sqs-worker",
+    tags: { queue: "orders" },
+  });
+  throw error;
+}
+```
+
+Do not pass the message body, customer data, credentials, or a dynamic queue URL to Wotchi. The
+consumer's existing retry, visibility-timeout, dead-letter, and acknowledgement policy remains the
+source of truth.
 
 ## Production recipe
 
@@ -101,7 +123,7 @@ combines:
 - `/healthz` for an external uptime monitor;
 - console delivery plus an optional bounded HTTPS webhook;
 - explicit release and instance labels;
-- graceful `SIGTERM`/`SIGINT` shutdown with `wotchi.flush(3_000)`.
+- graceful `SIGTERM`/`SIGINT` shutdown with `wotchi.shutdown(3_000)`.
 
 The recipe fits Render, Railway, or Cloud Run, but it does not replace platform health checks or
 external uptime monitoring. Wotchi runs inside one process: replicas have independent grouping

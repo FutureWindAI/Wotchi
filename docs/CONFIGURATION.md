@@ -13,31 +13,117 @@ application starts sending events; configuration errors do not echo supplied tok
 
 ## Optional fields and defaults
 
-| Path                          |  Default | Purpose                                                       |
-| ----------------------------- | -------: | ------------------------------------------------------------- |
-| `enabled`                     |   `true` | Disable capture without changing integration wiring.          |
-| `instance`                    |        — | Explicit host, replica, or process label for alerts.          |
-| `release`                     |        — | Explicit release/version label for alerts.                    |
-| `filter`                      |        — | Sanitized callback that can drop an event.                    |
-| `fingerprint`                 |        — | Config-level callback for sanitized event grouping.           |
-| `beforeSend`                  |        — | Sanitized alert callback that can transform or drop an alert. |
-| `links.log` / `links.trace`   |        — | HTTPS URL templates for bounded log/trace links.              |
-| `rules`                       |        — | Up to 50 exact environment/route policy rules.                |
-| `grouping.windowMs`           |  `60000` | Rolling grouping window.                                      |
-| `grouping.alertThreshold`     |      `3` | Matching events required before an alert.                     |
-| `grouping.cooldownMs`         | `900000` | Duplicate-alert suppression period.                           |
-| `grouping.maxGroups`          |    `200` | Maximum in-memory fingerprints; hard cap `10000`.             |
-| `grouping.maxEventsPerWindow` |    `100` | Maximum event timestamps per group; hard cap `10000`.         |
-| `queue.maxPendingAlerts`      |    `100` | Maximum queued alerts; hard cap `10000`.                      |
-| `privacy.maxDepth`            |      `5` | Maximum nested metadata depth; hard cap `20`.                 |
-| `privacy.maxKeys`             |    `100` | Maximum keys visited; hard cap `10000`.                       |
-| `privacy.maxStringLength`     |    `500` | Maximum retained string length; hard cap `32768`.             |
-| `privacy.maxStackLength`      |   `4000` | Maximum retained stack length; hard cap `32768`.              |
+| Path                           |  Default | Purpose                                                       |
+| ------------------------------ | -------: | ------------------------------------------------------------- |
+| `enabled`                      |   `true` | Disable capture without changing integration wiring.          |
+| `instance`                     |        — | Explicit host, replica, or process label for alerts.          |
+| `release`                      |        — | Explicit release/version label for alerts.                    |
+| `filter`                       |        — | Sanitized callback that can drop an event.                    |
+| `fingerprint`                  |        — | Config-level callback for sanitized event grouping.           |
+| `beforeSend`                   |        — | Sanitized alert callback that can transform or drop an alert. |
+| `links.log` / `links.trace`    |        — | HTTPS URL templates for bounded log/trace links.              |
+| `rules`                        |        — | Up to 50 exact environment/route policy rules.                |
+| `grouping.windowMs`            |  `60000` | Rolling grouping window.                                      |
+| `grouping.alertThreshold`      |      `3` | Matching events required before an alert.                     |
+| `grouping.cooldownMs`          | `900000` | Duplicate-alert suppression period.                           |
+| `grouping.maxGroups`           |    `200` | Maximum in-memory fingerprints; hard cap `10000`.             |
+| `grouping.maxEventsPerWindow`  |    `100` | Maximum event timestamps per group; hard cap `10000`.         |
+| `queue.maxPendingAlerts`       |    `100` | Maximum queued alerts; hard cap `10000`.                      |
+| `queue.notifierTimeoutMs`      |   `5000` | Per-notifier delivery deadline; hard cap `60000`.             |
+| `queue.notifierCircuitBreaker` |  enabled | Opens a notifier lane after 3 failures for 30 seconds.        |
+| `overload.maxEventsPerSecond`  |        — | Optional pre-normalization capture admission rate.            |
+| `overload.burst`               |     rate | Optional token-bucket burst capacity.                         |
+| `overload.alertCooldownMs`     |  `60000` | Cooldown for the sanitized overload signal.                   |
+| `privacy.maxDepth`             |      `5` | Maximum nested metadata depth; hard cap `20`.                 |
+| `privacy.maxKeys`              |    `100` | Maximum keys visited; hard cap `10000`.                       |
+| `privacy.maxStringLength`      |    `500` | Maximum retained string length; hard cap `32768`.             |
+| `privacy.maxStackLength`       |   `4000` | Maximum retained stack length; hard cap `32768`.              |
 
 The queue has concurrency `1` in the current release. Values above the hard caps are rejected
 with `WotchiConfigurationError`. When the queue is full, new notification work is dropped
 and the host request is not delayed. `getDiagnostics()` exposes counters for dropped work and
-notifier failures.
+notifier failures, timeouts, circuit skips, overload drops, and captures attempted after shutdown.
+
+## Overload admission
+
+High-volume applications can opt into a token bucket that rejects capture calls before expensive
+normalization. It is disabled by default, so existing applications retain their current behavior.
+Dropped calls increment `eventsDroppedOverload`; Wotchi emits at most one fixed, sanitized
+`wotchi.capture.overload` signal per configured cooldown. The host application continues handling
+the original error or request.
+
+```ts
+const wotchi = createWotchi({
+  service: "orders-api",
+  environment: "production",
+  overload: { maxEventsPerSecond: 500, burst: 100, alertCooldownMs: 60_000 },
+  notifiers: [consoleNotifier()],
+});
+```
+
+Use a measured rate and keep the burst finite. This is local admission control, not a replacement
+for upstream rate limiting or a cross-instance coordinator.
+
+## Notifier delivery protection
+
+Each notifier runs concurrently for an alert. A slow notifier is bounded by `notifierTimeoutMs`
+and cannot prevent healthy notifiers from receiving that same alert. Repeated failures open a small
+per-notifier circuit (`failureThreshold`, `cooldownMs`) and skip delivery while it is open. The
+underlying custom promise cannot be forcibly cancelled, so prefer the built-in transports or make
+custom notifiers abortable.
+
+## Graceful shutdown
+
+`shutdown(timeoutMs?)` closes admission, drains accepted notifier work, and rejects only when the
+bounded drain deadline expires. Calls made after shutdown are ignored and counted. Integrate it
+with the host's SIGTERM/SIGINT or framework shutdown hook:
+
+```ts
+await wotchi.shutdown(5_000);
+```
+
+## Runtime watcher (opt-in)
+
+The separate `registerWotchiRuntimeWatcher` helper samples process CPU, RSS, heap, event-loop
+delay, pending-alert, and notifier-failure pressure only when a threshold is configured. It uses one low-frequency
+unref'd timer, emits bounded numeric runtime events, never collects hostnames/environment values,
+and opens no network endpoint. Always benchmark the selected interval and thresholds in the host
+workload; it is disabled unless explicitly registered.
+
+The `notifierFailures` threshold measures failures observed since the previous sample, not the
+lifetime diagnostic total. A recovered notifier therefore does not keep producing runtime-pressure
+events solely because of an old failure.
+
+```ts
+const watcher = registerWotchiRuntimeWatcher(wotchi, {
+  intervalMs: 5_000,
+  cpuPercent: 90,
+  heapUsedBytes: 512 * 1024 * 1024,
+  eventLoopDelayMs: 100,
+  pendingAlerts: 80,
+});
+// On shutdown:
+watcher.unregister();
+```
+
+## Prometheus diagnostics exporter
+
+The optional exporter exposes aggregate Wotchi health data for an existing Prometheus-compatible
+scraper. It is a pure renderer: it does not open a port, make network requests, add labels, or read
+event payloads. The host application owns the protected `/metrics` route:
+
+```ts
+const metrics = createWotchiPrometheusExporter(wotchi);
+app.get("/metrics", (_request, response) => {
+  response.setHeader("Content-Type", metrics.contentType);
+  response.send(metrics.render());
+});
+```
+
+The output contains aggregate counters for capture, grouping, suppression, queueing, delivery,
+callbacks, and notifier failures, plus current active-group and pending-alert gauges. It contains
+no stacks, fingerprints, request data, routes, or secrets. Prometheus or another collector remains
+responsible for authentication, scraping, retention, and dashboards.
 
 ## Filtering, fingerprints, and per-route policy
 
@@ -94,9 +180,19 @@ error message, method, route, and first application stack frame after this norma
 This intentionally groups messages such as `user 123 lookup failed` and `user 456 lookup failed`
 when the rest of the failure is the same. It can also merge failures whose numeric value is
 meaningful. The current release does not expose a switch for changing these rules; use a distinct
-error name, message, route, or application frame when two numeric cases must remain separate.
-Arbitrary metadata is redacted and retained for the alert sample, but it is not part of the
-fingerprint identity.
+error name, message, route, application frame, or a deliberate fingerprint override when two
+numeric cases must remain separate. For example, use a stable non-secret business category rather
+than a raw customer identifier:
+
+```ts
+wotchi.captureException(error, undefined, {
+  fingerprint: `payment-provider:${providerErrorCode}`,
+});
+```
+
+An override is limited to 200 characters. It can increase alert cardinality, so use it only when
+the value changes the incident response. Arbitrary metadata is redacted and retained for the alert
+sample, but it is not part of the default fingerprint identity.
 
 ## Console format
 
@@ -174,7 +270,7 @@ await wotchi.flush();
 ```
 
 Capture is synchronous and bounded. Use `flush()` only when the host explicitly wants to wait for
-queued notifier work, such as a controlled shutdown or deterministic test.
+queued notifier work, such as a deterministic test. Use `shutdown()` for a real process shutdown.
 
 To validate configured destinations without manufacturing an application exception:
 

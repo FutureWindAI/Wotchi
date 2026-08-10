@@ -1,10 +1,11 @@
 import { performance } from "node:perf_hooks";
-import { createWotchi } from "../dist/esm/index.js";
+import { createWotchi, createWotchiPrometheusExporter } from "../dist/esm/index.js";
 
 const LATENCY_P95_MS = 1;
 const LATENCY_P99_MS = 2;
 const DUPLICATE_HEAP_LIMIT = 10 * 1024 * 1024;
 const UNIQUE_HEAP_LIMIT = 20 * 1024 * 1024;
+const PROMETHEUS_RENDER_LIMIT_MS = 1;
 const notifier = { name: "benchmark", send: async () => {} };
 
 const createClient = (overrides = {}) =>
@@ -70,11 +71,26 @@ const heapDelta = (count, unique) => {
   return globalThis.process.memoryUsage().heapUsed - before;
 };
 
+const prometheusRenderRun = () => {
+  const exporter = createWotchiPrometheusExporter(createClient());
+  const samples = [];
+  const iterations = 100;
+  for (let sample = 0; sample < 5; sample += 1) {
+    const elapsed = measure(() => {
+      exporter.render();
+    }, iterations);
+    samples.push(elapsed / iterations);
+  }
+  return samples;
+};
+
 const latencySamples = latencyRun();
 const p95 = percentile(latencySamples, 0.95);
 const p99 = percentile(latencySamples, 0.99);
 const duplicateHeap = heapDelta(10_000, false);
 const uniqueHeap = heapDelta(1_000, true);
+const prometheusRenderSamples = prometheusRenderRun();
+const prometheusRenderP95 = percentile(prometheusRenderSamples, 0.95);
 const result = {
   node: globalThis.process.version,
   platform: globalThis.process.platform,
@@ -84,6 +100,7 @@ const result = {
   captureP99Ms: Number(p99.toFixed(4)),
   duplicateHeapDeltaMiB: Number((duplicateHeap / 1024 / 1024).toFixed(3)),
   uniqueHeapDeltaMiB: Number((uniqueHeap / 1024 / 1024).toFixed(3)),
+  prometheusRenderP95Ms: Number(prometheusRenderP95.toFixed(4)),
 };
 globalThis.console.log(JSON.stringify(result, null, 2));
 
@@ -94,4 +111,7 @@ if (duplicateHeap >= DUPLICATE_HEAP_LIMIT || uniqueHeap >= UNIQUE_HEAP_LIMIT) {
   throw new Error(
     `Heap budget failed: duplicate=${duplicateHeap} bytes unique=${uniqueHeap} bytes`,
   );
+}
+if (prometheusRenderP95 >= PROMETHEUS_RENDER_LIMIT_MS) {
+  throw new Error(`Prometheus render budget failed: p95=${prometheusRenderP95}ms`);
 }

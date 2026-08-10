@@ -1,4 +1,5 @@
 import { validateConfig } from "./config.js";
+import { createCaptureAdmission } from "./admission.js";
 import { createDiagnosticsState, snapshotDiagnostics } from "./diagnostics.js";
 import { fingerprintSafeErrorEvent } from "./fingerprint.js";
 import { createGroupStore } from "./group-store.js";
@@ -359,9 +360,20 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
   const queue = createNotificationQueue({
     maxPendingAlerts: normalized.queue.maxPendingAlerts,
     concurrency: normalized.queue.concurrency,
+    notifierTimeoutMs: normalized.queue.notifierTimeoutMs,
+    notifierCircuitBreaker: normalized.queue.notifierCircuitBreaker,
   });
+  const admission =
+    normalized.overload === undefined
+      ? undefined
+      : createCaptureAdmission({
+          maxEventsPerSecond: normalized.overload.maxEventsPerSecond,
+          burst: normalized.overload.burst,
+          now,
+        });
   const privacy = normalized.privacy;
   let eventSequence = 0;
+  let overloadLastAlertAt = 0;
 
   const matchingRule = (event: SafeErrorEvent) =>
     normalized.rules.find(
@@ -510,6 +522,29 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     diagnostics.capturedEvents += 1;
   };
 
+  const emitOverloadSignal = (timestamp: number): void => {
+    const cooldownMs = normalized.overload?.alertCooldownMs ?? 0;
+    if (cooldownMs > 0 && timestamp - overloadLastAlertAt < cooldownMs) {
+      return;
+    }
+    overloadLastAlertAt = timestamp;
+    captureSafeEvent(
+      new Error("Wotchi capture overload: admission limit reached"),
+      undefined,
+      { droppedEvents: diagnostics.eventsDroppedOverload },
+      undefined,
+      "runtime-monitor",
+      1,
+      "wotchi.capture.overload",
+      "high",
+      undefined,
+      undefined,
+      "wotchi.overload",
+      undefined,
+      undefined,
+    );
+  };
+
   const captureException = (
     error: unknown,
     context?: Record<string, unknown>,
@@ -518,7 +553,16 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     if (!normalized.enabled) {
       return;
     }
+    if (queue.isClosed()) {
+      diagnostics.capturesAfterShutdown += 1;
+      return;
+    }
     try {
+      if (admission !== undefined && !admission.tryAcquire()) {
+        diagnostics.eventsDroppedOverload += 1;
+        emitOverloadSignal(now());
+        return;
+      }
       captureSafeEvent(
         error,
         undefined,
@@ -543,6 +587,10 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     if (!normalized.enabled) {
       return;
     }
+    if (queue.isClosed()) {
+      diagnostics.capturesAfterShutdown += 1;
+      return;
+    }
     try {
       if (event === null || typeof event !== "object" || event.level !== "error") {
         throw new TypeError("event.level must be error");
@@ -551,6 +599,16 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
         throw new TypeError("event.message must be a string");
       }
       const alertThreshold = normalizeEventAlertThreshold(event.alertThreshold);
+      if (
+        admission !== undefined &&
+        event.kind !== "process-monitor" &&
+        event.kind !== "runtime-monitor" &&
+        !admission.tryAcquire()
+      ) {
+        diagnostics.eventsDroppedOverload += 1;
+        emitOverloadSignal(now());
+        return;
+      }
       captureSafeEvent(
         event.error ?? safeMessage(event.message, privacy),
         event.metadata,
@@ -578,6 +636,8 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
       alertsDropped: queue.alertsDropped(),
       alertsSent: queue.alertsSent(),
       notifierFailures: queue.notifierFailures(),
+      notifierTimeouts: queue.notifierTimeouts(),
+      notifierCircuitOpenSkips: queue.notifierCircuitOpenSkips(),
       activeGroups: groupStore.size(),
       pendingAlerts: queue.pending(),
     });
@@ -644,11 +704,16 @@ export function createWotchi(config: WotchiConfig): WotchiClient {
     };
   };
 
+  const shutdown = async (timeoutMs?: number): Promise<void> => {
+    await queue.close(timeoutMs);
+  };
+
   return {
     captureException,
     captureEvent,
     testAlert,
     flush: (timeoutMs?: number) => queue.flush(timeoutMs),
+    shutdown,
     getDiagnostics: readDiagnostics,
   };
 }

@@ -145,12 +145,12 @@ const normalizeValue = (
       break;
     }
     state.keysVisited += 1;
-    result[truncate(key, limits.maxStringLength)] = normalizeValue(
-      readProperty(value, key),
-      depth + 1,
-      state,
-      limits,
-    );
+    const child = readProperty(value, key);
+    const normalizedKey = key.toLowerCase().replace(/[^a-z0-9]/g, "");
+    result[truncate(key, limits.maxStringLength)] =
+      normalizedKey === "stack" && typeof child === "string"
+        ? truncate(child, limits.maxStackLength)
+        : normalizeValue(child, depth + 1, state, limits);
   }
   return result;
 };

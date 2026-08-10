@@ -85,6 +85,8 @@ const CONNECTION_URL_PATTERN = /\b(?:postgres(?:ql)?|rediss?|mongodb(?:\+srv)?):
 const CONNECTION_QUERY_SECRET_PATTERN =
   /([?&](?:password|passwd|pass|secret|token|api[-_]?key|access[-_]?token|refresh[-_]?token|sslpassword)=)[^&#\s]*/gi;
 const URL_TRAILING_PUNCTUATION = /[),.;!?]+$/;
+const AUTHORITY_USERINFO_PATTERN =
+  /\b[^:\s/@]+:[^\s/@]+@(?=(?:[a-z0-9-]+(?:\.[a-z0-9-]+)*|\[[0-9a-f:.]+\])(?::\d+)?(?:[/?#\s,;.)]|$))/gi;
 
 const redactConnectionUrl = (candidate: string): string => {
   let core = candidate;
@@ -112,6 +114,9 @@ const redactConnectionUrl = (candidate: string): string => {
 
 const redactConnectionUrls = (value: string): string =>
   value.replace(CONNECTION_URL_PATTERN, redactConnectionUrl);
+
+const redactAuthorityUserinfo = (value: string): string =>
+  value.replace(AUTHORITY_USERINFO_PATTERN, `${REDACTED}@`);
 
 const SENSITIVE_QUERY_KEYS = new Set([
   "authorization",
@@ -152,6 +157,7 @@ const redactWebhookPathSecrets = (value: string): string =>
 
 const redactString = (value: string, maxStringLength: number): string => {
   let result = redactConnectionUrls(value);
+  result = redactAuthorityUserinfo(result);
   result = redactWebhookPathSecrets(result);
   result = redactSensitiveQueryValues(result);
   result = result.replace(
@@ -168,10 +174,7 @@ const redactString = (value: string, maxStringLength: number): string => {
       return separatorIndex < 0 ? REDACTED : `${match.slice(0, separatorIndex + 1)}${REDACTED}`;
     },
   );
-  result = result.replace(
-    /\b[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\.[A-Za-z0-9_-]{10,}\b/g,
-    REDACTED,
-  );
+  result = result.replace(/\b[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\.[A-Za-z0-9_-]{8,}\b/g, REDACTED);
   result = result.replace(
     /\b(?:github_pat|ghp|xox[baprs]-|sk|pk|AKIA)[A-Za-z0-9_-]{8,}\b/gi,
     REDACTED,

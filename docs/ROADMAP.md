@@ -23,11 +23,14 @@ security, compatibility, performance, package, and maintainer-approval gates.
 - Express 4/5 and NestJS 10/11 adapters
 - ESM, CommonJS, and TypeScript declaration exports
 - Compatibility, security, performance, and package checks
+- Optional aggregate Prometheus diagnostics export
+- Optional overload admission, notifier delivery protection, graceful shutdown, and numeric runtime watcher
 
 ## Next priorities
 
-- Improve documentation and compatibility examples from maintainer feedback.
+- Improve documentation and compatibility examples from user feedback.
 - Continue publishing release evidence with each immutable beta or stable version.
+- Validate runtime-watcher overhead and threshold policy in representative host workloads before enabling it broadly.
 - Consider additional logger integrations only after a small public API and performance review.
 
 ## Later, only after separate design review

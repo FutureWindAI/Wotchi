@@ -63,7 +63,7 @@ const shutdown = async (signal: string): Promise<void> => {
   console.log(`Received ${signal}; draining Wotchi notifications.`);
   await closeServerWithTimeout(server, SERVER_CLOSE_TIMEOUT_MS);
   await drainNotifications(
-    (timeoutMs) => wotchi.flush(timeoutMs),
+    (timeoutMs) => wotchi.shutdown(timeoutMs),
     WOTCHI_FLUSH_TIMEOUT_MS,
     (message) => console.error(message),
   );

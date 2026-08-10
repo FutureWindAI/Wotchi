@@ -40,17 +40,28 @@ receiving service.
 Trace and span IDs are passed through only when the host application supplies them. Wotchi does not
 install an OpenTelemetry SDK or collect trace data automatically.
 
+The optional Prometheus diagnostics exporter renders only fixed aggregate counters and queue/group
+gauges from `getDiagnostics()`. It opens no endpoint, accepts no request data, and includes no
+stacks, fingerprints, routes, or secrets. The host application must protect its metrics route and
+the receiving system controls authentication and retention.
+
 ## Operational boundaries
 
 Notifier work is asynchronous and bounded so a slow or failing notifier does not replace the
-application's response behavior. Queue overflow drops notification work and records a diagnostic
-counter. The process monitor is opt-in and never converts an observed crash into a successful exit.
+application's response behavior. Each notifier has an independent deadline and failure circuit;
+healthy destinations can receive an alert even when another destination is slow. Queue overflow
+drops notification work and records a diagnostic counter. The optional overload admission bucket
+can reject work before normalization and emits only a fixed sanitized signal. `shutdown()` closes
+admission and drains accepted work within a caller-supplied deadline. The process monitor and
+runtime watcher are opt-in; neither changes process exit behavior or sends automatic telemetry.
 
-Connection URLs for PostgreSQL, Redis, and MongoDB are sanitized before fingerprinting, grouping,
-logging, and notifier delivery. The URL host is retained when possible for diagnosis, while
-userinfo and credential-shaped query values are replaced with `[REDACTED]`. Applications should
-still avoid placing full connection strings in error messages and should configure their primary
-logger's redaction independently.
+Connection URLs for PostgreSQL, Redis, and MongoDB, plus authority-shaped `user:password@host`
+fragments, are sanitized before fingerprinting, grouping, logging, and notifier delivery. The URL
+host is retained when possible for diagnosis, while userinfo and credential-shaped query values are
+replaced with `[REDACTED]`. Wotchi's default Nest fallback does not send unknown exceptions to
+Nest's raw-error logger. Applications should still avoid placing full connection strings in error
+messages and should configure their primary logger and any custom Nest filter's redaction
+independently.
 
 See [Threat model](THREAT_MODEL.md) for assets, trust boundaries, mitigations, and residual risks.
 To report a vulnerability, follow the private-reporting guidance in the repository

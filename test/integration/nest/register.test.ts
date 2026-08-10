@@ -2,7 +2,17 @@ import "reflect-metadata";
 import assert from "node:assert/strict";
 import http from "node:http";
 import test from "node:test";
-import { Controller, Get, HttpCode, HttpException, Module, Req } from "@nestjs/common";
+import {
+  Catch,
+  type ArgumentsHost,
+  Controller,
+  Get,
+  HttpCode,
+  HttpException,
+  type LoggerService,
+  Module,
+  Req,
+} from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import { createWotchi } from "../../../src/index.js";
 import {
@@ -10,7 +20,7 @@ import {
   registerWotchiNestStatusObserver,
 } from "../../../src/integrations/nest/index.js";
 import type { IncidentAlert, WotchiNotifier } from "../../../src/index.js";
-import type { Request } from "express";
+import type { Request, Response } from "express";
 
 const request = (
   server: http.Server,
@@ -58,6 +68,13 @@ class TestController {
     throw new Error("nest generic failure");
   }
 
+  @Get("/host-log-secret-error")
+  hostLogSecretError(): never {
+    throw new Error(
+      "Nest database failure postgresql://db-user:WotchiNestHostLogCredentialCanary@db.internal:5432/orders",
+    );
+  }
+
   @Get("/metadata-error")
   metadataError(@Req() request: Request): never {
     const carrier = request as Request & Record<string, unknown>;
@@ -73,6 +90,15 @@ class TestController {
 
 @Module({ controllers: [TestController] })
 class TestModule {}
+
+@Catch()
+class ExistingGlobalExceptionFilter {
+  public catch(_exception: unknown, host: ArgumentsHost): void {
+    host.switchToHttp().getResponse<Response>().status(422).json({
+      code: "existing-filter-response",
+    });
+  }
+}
 
 test("NestJS filter captures errors and preserves framework responses", async () => {
   const captured: IncidentAlert[] = [];
@@ -110,6 +136,72 @@ test("NestJS filter captures errors and preserves framework responses", async ()
       captured.some((alert) => alert.summary.includes("do-not-capture")),
       false,
     );
+  } finally {
+    await app.close();
+  }
+});
+
+test("NestJS registration preserves an existing global exception filter response", async () => {
+  const captured: IncidentAlert[] = [];
+  const client = createWotchi({
+    service: "nest-existing-filter-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [
+      {
+        name: "test",
+        async send(alert): Promise<void> {
+          captured.push(alert);
+        },
+      },
+    ],
+  });
+  const app = await NestFactory.create(TestModule, { logger: false });
+  app.useGlobalFilters(new ExistingGlobalExceptionFilter());
+  registerWotchiNest(app, client);
+  await app.listen(0, "127.0.0.1");
+  const server = app.getHttpServer() as http.Server;
+
+  try {
+    const response = await request(server, "/generic-error");
+    await client.flush();
+    assert.equal(response.status, 422);
+    assert.deepEqual(JSON.parse(response.body), { code: "existing-filter-response" });
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.summary.includes("nest generic failure"), true);
+  } finally {
+    await app.close();
+  }
+});
+
+test("NestJS default fallback does not forward a raw unknown exception to the host logger", async () => {
+  const canary = "WotchiNestHostLogCredentialCanary";
+  const hostErrors: unknown[][] = [];
+  const logger: LoggerService = {
+    log: () => undefined,
+    error: (...messages: unknown[]) => hostErrors.push(messages),
+    warn: () => undefined,
+    debug: () => undefined,
+    verbose: () => undefined,
+    fatal: () => undefined,
+  };
+  const client = createWotchi({
+    service: "nest-host-log-redaction-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [{ name: "test", async send(): Promise<void> {} }],
+  });
+  const app = await NestFactory.create(TestModule, { logger });
+  registerWotchiNest(app, client);
+  await app.listen(0, "127.0.0.1");
+  const server = app.getHttpServer() as http.Server;
+
+  try {
+    const response = await request(server, "/host-log-secret-error");
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(hostErrors.length, 0);
+    assert.equal(JSON.stringify(hostErrors).includes(canary), false);
   } finally {
     await app.close();
   }

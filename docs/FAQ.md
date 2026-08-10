@@ -29,6 +29,31 @@ database.
 No. Pass existing trace/span and correlation IDs explicitly in the event request context. Wotchi
 does not add a tracing SDK, exporter, or telemetry backend.
 
+## Can Wotchi expose its own health metrics?
+
+Beta.6 adds `createWotchiPrometheusExporter()`, which renders aggregate counters
+and queue/group gauges for a host-owned, protected `/metrics` endpoint. It does not open a listener,
+send network traffic, or include event data, stacks, fingerprints, routes, or secrets.
+
+## Can Wotchi protect a high-volume process?
+
+Yes, opt into `overload` admission to bound capture work before normalization. It drops excess
+capture calls and emits one sanitized overload signal per cooldown. This is per process; use an
+upstream limiter or shared relay when several replicas need one global budget.
+
+## How do slow notifiers behave?
+
+Each notifier has its own timeout and small failure circuit. A slow destination cannot prevent a
+healthy destination from receiving the same alert. Custom promises should still be abortable when
+possible because JavaScript cannot forcibly cancel an arbitrary promise.
+
+## Does Wotchi collect CPU or memory telemetry?
+
+Not by default. The optional `registerWotchiRuntimeWatcher` samples only configured local numeric
+CPU, memory, event-loop, queue, or notifier-failure thresholds on one unref'd timer and sends no
+telemetry endpoint or host identity. Unregister it at shutdown and benchmark the chosen interval in
+the host workload.
+
 ## What does `testAlert()` return?
 
 It returns a structured result with `status`, queue/flush/delivery booleans, notifier-failure

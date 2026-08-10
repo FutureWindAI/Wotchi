@@ -80,20 +80,30 @@ for i in 1 2 3; do curl -sS -i http://127.0.0.1:3000/failure; done
 You should receive the normal HTTP error response and one grouped `Wotchi` alert. Wotchi does not
 take ownership of the response.
 
-## 4. Attach a NestJS adapter
+## 4. Attach NestJS from `AppModule`
 
-For NestJS, create the client after `NestFactory.create()` and register it once:
+For NestJS, import `WotchiModule` into the root module. It creates one client and registers the
+safe global exception filter; no `main.ts` registration is required:
 
 ```ts
-const app = await NestFactory.create(AppModule);
-const wotchi = createWotchi({
-  service: "orders-api",
-  environment: "local",
-  notifiers: [consoleNotifier()],
-});
+import { Module } from "@nestjs/common";
+import { consoleNotifier } from "@futurewindai/wotchi";
+import { WotchiModule } from "@futurewindai/wotchi/nest";
 
-registerWotchiNest(app, wotchi);
+@Module({
+  imports: [
+    WotchiModule.forRoot({
+      service: "orders-api",
+      environment: "local",
+      notifiers: [consoleNotifier()],
+    }),
+  ],
+})
+export class AppModule {}
 ```
+
+Use `registerWotchiNest(app, wotchi)` only when the application intentionally constructs its
+client in bootstrap code.
 
 See the [NestJS example](EXAMPLES.md#nestjs-11) for a runnable application and trigger command.
 

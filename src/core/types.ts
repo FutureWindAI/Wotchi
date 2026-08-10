@@ -1,5 +1,5 @@
 export type IncidentSeverity = "low" | "medium" | "high" | "critical";
-export type WotchiEventKind = "error" | "manual" | "process-monitor";
+export type WotchiEventKind = "error" | "manual" | "process-monitor" | "runtime-monitor";
 
 export interface WotchiTraceContext {
   traceId?: string;
@@ -176,6 +176,16 @@ export interface WotchiConfig {
   queue?: {
     maxPendingAlerts?: number;
     concurrency?: 1;
+    notifierTimeoutMs?: number;
+    notifierCircuitBreaker?: {
+      failureThreshold?: number;
+      cooldownMs?: number;
+    };
+  };
+  overload?: {
+    maxEventsPerSecond?: number;
+    burst?: number;
+    alertCooldownMs?: number;
   };
   privacy?: {
     redactKeys?: string[];
@@ -199,8 +209,12 @@ export interface WotchiDiagnostics {
   filterFailures: number;
   beforeSendFailures: number;
   eventsSuppressed: number;
+  eventsDroppedOverload: number;
+  capturesAfterShutdown: number;
   activeGroups: number;
   pendingAlerts: number;
+  notifierTimeouts: number;
+  notifierCircuitOpenSkips: number;
 }
 
 export type WotchiTestAlertStatus = "sent" | "queue-full" | "timeout" | "notifier-failed";
@@ -225,5 +239,6 @@ export interface WotchiClient {
   captureEvent(event: WotchiEventInput): void;
   testAlert(): Promise<WotchiTestAlertResult>;
   flush(timeoutMs?: number): Promise<void>;
+  shutdown(timeoutMs?: number): Promise<void>;
   getDiagnostics(): Readonly<WotchiDiagnostics>;
 }

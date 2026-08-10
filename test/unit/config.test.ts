@@ -28,6 +28,8 @@ test("configuration validation applies bounded defaults and freezes the result",
   assert.deepEqual(normalized.queue, {
     maxPendingAlerts: 100,
     concurrency: 1,
+    notifierTimeoutMs: 5_000,
+    notifierCircuitBreaker: { failureThreshold: 3, cooldownMs: 30_000 },
   });
   assert.deepEqual(normalized.privacy, {
     maxDepth: 5,
@@ -72,6 +74,13 @@ test("configuration rejects zero, negative, non-integer, and oversized limits", 
     { ...baseConfig(), grouping: { windowMs: 0 } },
     { ...baseConfig(), grouping: { alertThreshold: -1 } },
     { ...baseConfig(), grouping: { maxGroups: 1.5 } },
+    { ...baseConfig(), overload: { maxEventsPerSecond: 0 } },
+    { ...baseConfig(), overload: { burst: 0 } },
+    { ...baseConfig(), queue: { notifierTimeoutMs: 0 } },
+    {
+      ...baseConfig(),
+      queue: { notifierCircuitBreaker: { failureThreshold: 0 } },
+    },
     { ...baseConfig(), privacy: { maxDepth: 0 } },
     { ...baseConfig(), privacy: { redactKeys: Array.from({ length: 101 }, (_, i) => `key-${i}`) } },
   ];

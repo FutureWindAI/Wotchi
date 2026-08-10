@@ -2,6 +2,28 @@
 
 All notable changes to Wotchi are documented here.
 
+## 0.1.0-beta.6 — 2026-08-10
+
+- Added `WotchiModule.forRoot()` for AppModule-based NestJS setup and `withWotchiNestFilter()` for preserving application-owned exception filters.
+- Preserved native NestJS response bodies for object and string `HttpException` values.
+- Redacted credential-bearing connection URLs from error messages and stacks before fingerprinting, grouping, console output, Telegram delivery, and webhook delivery.
+- Corrected Express incident status metadata by observing the final response status after downstream error handling without creating duplicate status-observer incidents.
+- Added legacy CommonJS TypeScript declaration resolution for ordinary static root, Express, and NestJS imports.
+- Expanded packed-consumer, framework, redaction, response-preservation, and notifier-output regression coverage.
+- Fixed same-millisecond high-cardinality eviction so a recently recorded group is not evicted as the oldest entry.
+- Applied the configured stack-specific privacy limit before the generic string limit.
+- Redacted short-segment JWT-shaped credentials in summaries, stacks, and notifier payloads.
+- Added an opt-in, zero-dependency Prometheus diagnostics renderer for aggregate Wotchi counters and queue/group gauges.
+- Added opt-in pre-normalization overload admission with bounded synthetic overload diagnostics.
+- Added per-notifier delivery timeouts, concurrent notifier dispatch, failure circuits, and diagnostics counters.
+- Added `WotchiClient.shutdown(timeoutMs?)` for closed-state capture and bounded graceful draining.
+- Added the separate opt-in `registerWotchiRuntimeWatcher()` for numeric CPU, memory, event-loop, queue, and notifier-failure thresholds using one unref'd timer.
+- Extended ignored Express/Nest test stands with packed-package `/metrics` smoke routes and runtime-watcher coverage.
+- Redacted authority credentials for single-label internal hosts such as `user:password@postgres`.
+- Preserved late Express error capture when the response has already finished, without changing the host response.
+- Measured runtime-watcher notifier failures per sampling interval so recovered failures do not repeat as pressure alerts.
+- Corrected the public configuration examples for runtime-watcher and Prometheus code fences.
+
 ## 0.1.0-beta.5 — 2026-08-09
 
 - Added bounded generic HTTPS webhook delivery with optional headers, timeout, and one transient retry.
@@ -13,8 +35,6 @@ All notable changes to Wotchi are documented here.
 - Closed alert-boundary redaction bypasses with serialized-notifier regression coverage.
 - Added hard resource caps, prototype-safe normalization, and typed configuration failures for hostile getters.
 - Rejected private and metadata HTTPS webhook destinations by default and pinned resolved transport addresses.
-- Added content-digest names for local packed artifacts so they cannot be confused with published releases.
-- Fixed the protected staging workflow to pass the exact release tarball as an explicit local path.
 
 ## 0.1.0-beta.2 — 2026-08-08
 

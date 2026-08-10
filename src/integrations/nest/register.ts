@@ -2,6 +2,7 @@ import type { HttpServer } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import type { WotchiClient } from "../../core/types.js";
 import { WotchiNestExceptionFilter } from "./exception-filter.js";
+import type { NestExceptionFilterLike } from "./filter-wrapper.js";
 import type { NestWotchiOptions } from "./request-context.js";
 import { wotchiStatusObserver } from "../express/status-observer.js";
 import type { WotchiStatusObserverOptions } from "../express/status-observer.js";
@@ -13,7 +14,29 @@ export interface NestWotchiApplication {
   getHttpAdapter?: () => unknown;
   use?: (...middleware: unknown[]) => unknown;
   useGlobalFilters(...filters: unknown[]): unknown;
+  config?: {
+    getGlobalFilters?: () => unknown[];
+  };
 }
+
+const isNestExceptionFilter = (value: unknown): value is NestExceptionFilterLike =>
+  typeof value === "object" &&
+  value !== null &&
+  "catch" in value &&
+  typeof value.catch === "function";
+
+const getPreviousGlobalFilters = (
+  application: NestWotchiApplication,
+): readonly NestExceptionFilterLike[] => {
+  const configuredFilters = application.config?.getGlobalFilters?.();
+  if (!Array.isArray(configuredFilters)) {
+    return [];
+  }
+  return configuredFilters
+    .filter(isNestExceptionFilter)
+    .filter((filter) => !(filter instanceof WotchiNestExceptionFilter))
+    .reverse();
+};
 
 export function registerWotchiNest(
   app: unknown,
@@ -26,7 +49,14 @@ export function registerWotchiNest(
     directAdapter === undefined
       ? application.get(HttpAdapterHost).httpAdapter
       : (directAdapter as HttpServer);
-  application.useGlobalFilters(new WotchiNestExceptionFilter(client, httpAdapter, options));
+  application.useGlobalFilters(
+    new WotchiNestExceptionFilter(
+      client,
+      httpAdapter,
+      options,
+      getPreviousGlobalFilters(application),
+    ),
+  );
 }
 
 export function registerWotchiNestStatusObserver(

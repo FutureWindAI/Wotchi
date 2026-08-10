@@ -92,7 +92,9 @@ if (
           REQUIRE_TEST_SERVICES: "true",
         };
 
-        globalThis.console.log("Starting NestJS 11 PostgreSQL and Redis services...");
+        globalThis.console.log(
+          "Starting NestJS 11 PostgreSQL, Redis, and LocalStack SQS services...",
+        );
         const services = spawnSync("docker", ["compose", "up", "-d", "--wait"], {
           cwd: standDirectory,
           env: standEnvironment,
@@ -100,7 +102,7 @@ if (
         });
         if (services.status !== 0) {
           globalThis.console.error(
-            "Could not start NestJS 11 services. Is Docker Desktop running, and is port 5432 or 6381 free?",
+            "Could not start NestJS 11 services. Is Docker Desktop running, and are ports 5432, 6381, and 4567 free?",
           );
           packagePreparationFailed = true;
         }
@@ -183,17 +185,29 @@ if (
         globalThis.console.log(`for i in 1 2 3 4 5; do curl -sS -i ${baseUrl}/repeat-error; done`);
         globalThis.console.log("# Secret-redaction check");
         globalThis.console.log(`curl -i ${baseUrl}/secret-error`);
+        globalThis.console.log("# Aggregate diagnostics (Prometheus text; no stacks or secrets)");
+        globalThis.console.log(`curl -i ${baseUrl}/metrics`);
+        globalThis.console.log(
+          "# Optional runtime watcher (start the stand with WOTCHI_RUNTIME_WATCHER=true)",
+        );
         if (server === "nest" && version === "11") {
           globalThis.console.log(
-            "# Service status (PostgreSQL and Redis are started automatically for NestJS 11)",
+            "# Service status (PostgreSQL, Redis, and LocalStack SQS are started automatically for NestJS 11)",
           );
           globalThis.console.log(`curl -i ${baseUrl}/service-status`);
-          globalThis.console.log("# Database and Redis connectivity checks");
+          globalThis.console.log("# Database, Redis, and SQS connectivity checks");
           globalThis.console.log(`curl -i ${baseUrl}/db-check`);
           globalThis.console.log(`curl -i ${baseUrl}/redis-check`);
+          globalThis.console.log(`curl -i ${baseUrl}/sqs-check`);
           globalThis.console.log("# Intentional dependency failures");
           globalThis.console.log(`curl -i ${baseUrl}/db-query-error`);
           globalThis.console.log(`curl -i ${baseUrl}/redis-command-error`);
+          globalThis.console.log(
+            "# Manual SQS worker failure: three calls produce one grouped Wotchi alert",
+          );
+          globalThis.console.log(
+            `for i in 1 2 3; do curl -sS -i -X POST ${baseUrl}/sqs/worker-error; done`,
+          );
           globalThis.console.log("# Authentication failures");
           globalThis.console.log(`curl -i ${baseUrl}/auth/missing-user`);
           globalThis.console.log(`curl -i -X POST ${baseUrl}/auth/invalid-password`);

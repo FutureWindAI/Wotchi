@@ -62,22 +62,40 @@ errors. The observer records status and safe route metadata only, never bodies o
 
 ## NestJS responses changed
 
-Call `registerWotchiNest(app, wotchi)` once after creating the Nest application. Do not replace the
-normal NestJS exception filter chain with a custom response implementation.
+Prefer `WotchiModule.forRoot(config)` in `AppModule`; no `main.ts` registration is needed. For an
+existing dependency-injected `APP_FILTER`, use `withWotchiNestFilter(wotchi, filter)` with
+`registerGlobalFilter: false` so the existing filter keeps its response body, status, and logging.
+For bootstrap-based applications, register static filters with `app.useGlobalFilters(...)` first,
+then call `registerWotchiNest(app, wotchi)`.
 
 ## Winston, Pino, or NestJS Logger is already installed
 
 This is supported. Wotchi does not patch logger methods, intercept stdout, or install a logger
 transport. Keep the existing logger configuration and add Wotchi at an error boundary or use
-explicit `captureException` calls. Configure redaction in both systems when both systems receive
-the same context.
+explicit `captureException` calls. Its default Nest fallback avoids forwarding unknown exceptions
+to Nest's raw-error logger, but custom filters and host loggers still need their own redaction when
+they receive the same context.
 
 ## Notifications are delayed or missing under a burst
 
-Notification work is queued with bounded capacity and concurrency one. When the queue is full,
-new notification work is dropped so the host request is not delayed. `getDiagnostics()` exposes
-`alertsDropped`, `pendingAlerts`, and `notifierFailures`. Increase limits only after measuring the
-host impact; do not remove bounds to preserve every alert.
+Notification work is queued with bounded capacity and one alert worker. Each notifier attempt has a
+deadline and failure circuit; healthy destinations are dispatched independently. When the queue is
+full, new notification work is dropped so the host request is not delayed. `getDiagnostics()`
+exposes `alertsDropped`, `pendingAlerts`, `notifierFailures`, `notifierTimeouts`, and circuit skips.
+Increase limits only after measuring the host impact; do not remove bounds to preserve every alert.
+
+## Capture work is too high during an incident
+
+Enable the opt-in `overload` token bucket to reject captures before normalization. Tune
+`maxEventsPerSecond` and `burst` from measurements, then watch `eventsDroppedOverload` and the
+fixed `wotchi.capture.overload` signal. This budget is local to one process and does not replace
+upstream rate limiting.
+
+## Graceful shutdown
+
+Call `await wotchi.shutdown(timeoutMs)` from the host shutdown hook after unregistering optional
+runtime watchers. Accepted notifications drain until the deadline; captures arriving afterward are
+ignored and counted.
 
 ## A secret appears in an error
 
@@ -112,7 +130,8 @@ part of this in-process package.
 
 The process monitor uses `uncaughtExceptionMonitor` to observe an exception without changing Node's
 normal exit behavior. A process that exits immediately is not promised a synchronous network flush.
-Use the normal application lifecycle and `flush()` for controlled shutdowns when appropriate.
+Use the normal application lifecycle and `shutdown()` for controlled termination; reserve `flush()`
+for a non-closing deterministic wait.
 
 See the [API reference](API.md) for public contracts, then reproduce the smallest failing case in a
 public example without real secrets or customer data.

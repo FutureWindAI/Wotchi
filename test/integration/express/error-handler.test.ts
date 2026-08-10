@@ -103,6 +103,83 @@ test("Express middleware captures and passes the original error to the existing 
   }
 });
 
+test("Express error capture uses the final error response status without duplicating status observation", async () => {
+  const captured: IncidentAlert[] = [];
+  const notifier: WotchiNotifier = {
+    name: "test",
+    async send(alert): Promise<void> {
+      captured.push(alert);
+    },
+  };
+  const client = createWotchi({
+    service: "express-final-status-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [notifier],
+  });
+  const app = express();
+  app.use(wotchiStatusObserver(client, { statusCodes: [], statusClasses: ["5xx"] }));
+  app.get("/final-status", () => {
+    throw new Error("final handler chooses the status");
+  });
+  app.use(wotchiErrorHandler(client));
+  app.use((_error: unknown, _request: Request, response: express.Response) => {
+    response.status(500).json({ error: "handled" });
+  });
+
+  const server = await listen(app);
+  try {
+    const response = await request(server, "/final-status");
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.request?.statusCode, 500);
+  } finally {
+    await close(server);
+  }
+});
+
+test("Express error capture still records an error after the response already finished", async () => {
+  const captured: IncidentAlert[] = [];
+  const client = createWotchi({
+    service: "express-late-error-test",
+    environment: "test",
+    grouping: { alertThreshold: 1 },
+    notifiers: [
+      {
+        name: "test",
+        async send(alert): Promise<void> {
+          captured.push(alert);
+        },
+      },
+    ],
+  });
+  const app = express();
+  app.get("/late-error", (_request, response, next) => {
+    response.status(500).end("already-finished");
+    setImmediate(() => next(new Error("late asynchronous failure")));
+  });
+  app.use(wotchiErrorHandler(client));
+  const finishedErrorHandler: ErrorRequestHandler = (_error, _request, _response, _next) => {
+    // The response is already complete; preserve it without invoking Express's default logger.
+  };
+  app.use(finishedErrorHandler);
+
+  const server = await listen(app);
+  try {
+    const response = await request(server, "/late-error");
+    await new Promise((resolve) => setImmediate(resolve));
+    await client.flush();
+    assert.equal(response.status, 500);
+    assert.equal(response.body, "already-finished");
+    assert.equal(captured.length, 1);
+    assert.equal(captured[0]?.summary.includes("late asynchronous failure"), true);
+    assert.equal(captured[0]?.request?.statusCode, 500);
+  } finally {
+    await close(server);
+  }
+});
+
 test("Express error handler promotes request metadata for alert fields and links", async () => {
   const captured: IncidentAlert[] = [];
   const notifier: WotchiNotifier = {

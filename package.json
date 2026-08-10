@@ -1,6 +1,6 @@
 {
   "name": "@futurewindai/wotchi",
-  "version": "0.1.0-beta.5",
+  "version": "0.1.0-beta.6",
   "description": "Low-noise error alerts for Node.js, Express, and NestJS applications",
   "keywords": [
     "nodejs",
@@ -33,6 +33,16 @@
   "main": "./dist/cjs/index.js",
   "module": "./dist/esm/index.js",
   "types": "./dist/types/index.d.ts",
+  "typesVersions": {
+    "*": {
+      "express": [
+        "dist/types/integrations/express/index.d.ts"
+      ],
+      "nest": [
+        "dist/types/integrations/nest/index.d.ts"
+      ]
+    }
+  },
   "exports": {
     ".": {
       "types": {

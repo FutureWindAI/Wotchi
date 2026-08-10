@@ -39,6 +39,24 @@ test("group store tracks lifetime counts, rolling counts, samples, and eviction"
   assert.equal(store.groupsEvicted(), 1);
 });
 
+test("group store retains a recently recorded group when timestamps tie", () => {
+  const store = createGroupStore({
+    maxGroups: 2,
+    maxEventsPerWindow: 100,
+    windowMs: 60_000,
+    now: () => 0,
+  });
+
+  store.record("hot", event("hot"));
+  store.record("cold", event("cold"));
+  store.record("hot", event("hot"));
+  store.record("new", event("new"));
+
+  assert.equal(store.get("hot")?.totalCount, 2);
+  assert.equal(store.get("cold"), undefined);
+  assert.equal(store.get("new")?.totalCount, 1);
+});
+
 test("group store keeps one sanitized sample and caps rolling events", () => {
   const store = createGroupStore({
     maxGroups: 2,
