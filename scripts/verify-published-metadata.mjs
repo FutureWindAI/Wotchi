@@ -2,6 +2,7 @@ import process from "node:process";
 import {
   publishedMetadataFailures,
   publishedMetadataFromRegistryDocument,
+  publishedTarballFailures,
   WOTCHI_PACKAGE_NAME,
 } from "./published-metadata.mjs";
 
@@ -31,6 +32,21 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v
 
   if (metadata !== undefined) {
     const failures = publishedMetadataFailures(metadata, version);
+    if (failures.length === 0) {
+      try {
+        const tarballResponse = await globalThis.fetch(metadata.dist.tarball, {
+          headers: { accept: "application/octet-stream" },
+          signal: controller.signal,
+        });
+        if (!tarballResponse.ok) {
+          failures.push(`Registry tarball returned ${tarballResponse.status}`);
+        } else {
+          failures.push(...publishedTarballFailures(await tarballResponse.arrayBuffer()));
+        }
+      } catch {
+        failures.push("Could not read the published tarball");
+      }
+    }
     if (failures.length > 0) {
       console.error(
         `Published metadata verification failed for ${WOTCHI_PACKAGE_NAME}@${version}:`,
