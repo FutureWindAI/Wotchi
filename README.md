@@ -87,7 +87,7 @@ bounded. On a Node.js 22.14/macOS arm64 benchmark run of RC1, capture p95/p99 wa
 about `60.8 KB`. Prometheus rendering p95 was `0.0057 ms`. The queue benchmark admitted `101` alerts while a notifier was blocked, capped
 pending work at `100`, and kept Express and NestJS responses completing. These are reproducible local
 measurements, not production guarantees; repeat `npm run benchmark` and `npm run benchmark:queue`
-on your runtime and workload. See [performance evidence](docs/PERFORMANCE.md).
+on your runtime and workload. See [performance evidence](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/PERFORMANCE.md).
 
 The exporter does not open a server or send data. Attach it to a protected endpoint owned
 by the host application:
@@ -163,7 +163,7 @@ export class AppModule {}
 ```
 
 For a custom dependency-injected `APP_FILTER`, keep its response and logging behavior, disable the
-automatic Wotchi filter, and wrap it with `withWotchiNestFilter`. See the [NestJS API](docs/API.md#nestjs-entry-point).
+automatic Wotchi filter, and wrap it with `withWotchiNestFilter`. See the [NestJS API](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/API.md#nestjs-entry-point).
 
 The package requires Node.js `>=22.14.0` and tests the Node.js 22, 24, and 26 release lines. Use a maintained LTS line—Node.js 22 or 24—for production. Express and NestJS adapters are optional subpath integrations, so applications only load the framework adapter they use.
 
@@ -195,7 +195,7 @@ function requiredEnv(name: string): string {
 }
 ```
 
-Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md) for notifier and security options.
+Wotchi does not ship a shared bot token. Delivery is queued outside the request path and sends only the sanitized incident alert. See [configuration](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/CONFIGURATION.md) for notifier and security options.
 
 ## HTTPS webhook alerts
 
@@ -261,7 +261,7 @@ Wotchi keeps grouping and cooldown state in one process. Replicas have independe
 reset groups, and a serverless instance can terminate before asynchronous delivery completes. An
 in-process SDK cannot reliably detect an OOM kill, frozen event loop, host failure, or unavailable
 network. Pair it with an external uptime monitor and keep graceful shutdown explicit; see the
-[production recipe](https://github.com/FutureWindAI/Wotchi/blob/main/examples/production-recipe/README.md).
+[production recipe](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/examples/production-recipe/README.md).
 
 ## Process monitoring
 
@@ -285,25 +285,25 @@ const monitor = registerWotchiProcessMonitor(wotchi);
 
 ## Documentation
 
-- [Getting started](https://github.com/FutureWindAI/Wotchi/blob/main/docs/GETTING_STARTED.md)
-- [Examples](https://github.com/FutureWindAI/Wotchi/blob/main/docs/EXAMPLES.md)
-- [API reference](https://github.com/FutureWindAI/Wotchi/blob/main/docs/API.md)
-- [Configuration](https://github.com/FutureWindAI/Wotchi/blob/main/docs/CONFIGURATION.md)
-- [Compatibility](https://github.com/FutureWindAI/Wotchi/blob/main/docs/COMPATIBILITY.md)
-- [Performance](https://github.com/FutureWindAI/Wotchi/blob/main/docs/PERFORMANCE.md)
-- [Architecture](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ARCHITECTURE.md)
-- [Roadmap](https://github.com/FutureWindAI/Wotchi/blob/main/docs/ROADMAP.md)
-- [Troubleshooting](https://github.com/FutureWindAI/Wotchi/blob/main/docs/TROUBLESHOOTING.md)
-- [FAQ](https://github.com/FutureWindAI/Wotchi/blob/main/docs/FAQ.md)
-- [Security and privacy](https://github.com/FutureWindAI/Wotchi/blob/main/docs/SECURITY.md)
-- [Threat model](https://github.com/FutureWindAI/Wotchi/blob/main/docs/THREAT_MODEL.md)
-- [Contributing](https://github.com/FutureWindAI/Wotchi/blob/main/CONTRIBUTING.md)
-- [Changelog](https://github.com/FutureWindAI/Wotchi/blob/main/CHANGELOG.md)
+- [Getting started](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/GETTING_STARTED.md)
+- [Examples](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/EXAMPLES.md)
+- [API reference](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/API.md)
+- [Configuration](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/CONFIGURATION.md)
+- [Compatibility](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/COMPATIBILITY.md)
+- [Performance](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/PERFORMANCE.md)
+- [Architecture](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/ARCHITECTURE.md)
+- [Roadmap](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/ROADMAP.md)
+- [Troubleshooting](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/TROUBLESHOOTING.md)
+- [FAQ](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/FAQ.md)
+- [Security and privacy](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/SECURITY.md)
+- [Threat model](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/docs/THREAT_MODEL.md)
+- [Contributing](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/CONTRIBUTING.md)
+- [Changelog](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/CHANGELOG.md)
 - [GitHub releases](https://github.com/FutureWindAI/Wotchi/releases)
-- [Apache License 2.0](https://github.com/FutureWindAI/Wotchi/blob/main/LICENSE)
+- [Apache License 2.0](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/LICENSE)
 
 ## Security
 
-Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using the [security policy](https://github.com/FutureWindAI/Wotchi/blob/main/SECURITY.md).
+Do not include real secrets or customer error data in issues, examples, or test fixtures. Report security vulnerabilities privately using the [security policy](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/SECURITY.md).
 
 Wotchi is open source and maintained by FutureWind AI.

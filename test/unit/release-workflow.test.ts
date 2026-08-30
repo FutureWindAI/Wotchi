@@ -106,3 +106,17 @@ test("RC1 metadata and compatibility gates share the supported runtime contract"
   assert.match(compatibilityMatrix, /nest12: \[/);
   assert.match(compatibilityMatrix, /"@nestjs\/common@12\.0\.1"/);
 });
+
+test("the packaged README links repository documents to the immutable release tag", async () => {
+  const [readme, packageDocument] = await Promise.all([
+    readWorkspaceFile("README.md"),
+    readWorkspaceFile("package.json"),
+  ]);
+  const packageJson = JSON.parse(packageDocument) as { version: string };
+  const releaseDocumentBase = `https://github.com/FutureWindAI/Wotchi/blob/v${packageJson.version}/`;
+
+  assert.doesNotMatch(readme, /\]\((?:docs|examples)\/[^)]+\)/);
+  assert.doesNotMatch(readme, /https:\/\/github\.com\/FutureWindAI\/Wotchi\/(?:blob|tree)\/main\//);
+  assert.match(readme, new RegExp(`${releaseDocumentBase}docs/GETTING_STARTED\\.md`));
+  assert.match(readme, new RegExp(`${releaseDocumentBase}CHANGELOG\\.md`));
+});
