@@ -2,6 +2,13 @@
 
 All notable changes to Wotchi are documented here.
 
+## Unreleased
+
+- Fixed CommonJS declaration generation so strict Node16/NodeNext consumers can resolve internal
+  Wotchi types without an ambient compatibility bridge.
+- Added package verification for every relative import in generated CommonJS declarations.
+- Documented application-specific `privacy.redactKeys` configuration.
+
 ## 0.1.0-beta.6 — 2026-08-10
 
 - Added `WotchiModule.forRoot()` for AppModule-based NestJS setup and `withWotchiNestFilter()` for preserving application-owned exception filters.

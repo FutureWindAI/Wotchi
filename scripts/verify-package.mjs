@@ -1,6 +1,61 @@
 import { execFileSync } from "node:child_process";
+import { readFileSync, readdirSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { isAbsolute, join, relative, resolve } from "node:path";
+import ts from "typescript";
+
+const declarationFiles = (directory) =>
+  readdirSync(directory, { withFileTypes: true }).flatMap((entry) => {
+    const path = join(directory, entry.name);
+    return entry.isDirectory() ? declarationFiles(path) : [path];
+  });
+
+const commonJsTypesRoot = resolve("dist/types-cjs");
+const commonJsDeclarations = declarationFiles(commonJsTypesRoot).filter((path) =>
+  path.endsWith(".d.cts"),
+);
+const declarationOptions = {
+  module: ts.ModuleKind.NodeNext,
+  moduleResolution: ts.ModuleResolutionKind.NodeNext,
+  strict: true,
+  skipLibCheck: false,
+};
+const unresolvedDeclarations = [];
+
+for (const declarationPath of commonJsDeclarations) {
+  const declaration = readFileSync(declarationPath, "utf8");
+  const imports = ts.preProcessFile(declaration, true, true).importedFiles;
+  for (const imported of imports) {
+    if (!imported.fileName.startsWith(".")) {
+      continue;
+    }
+    const resolvedModule = ts.resolveModuleName(
+      imported.fileName,
+      declarationPath,
+      declarationOptions,
+      ts.sys,
+    ).resolvedModule;
+    const resolvedPath = resolvedModule?.resolvedFileName;
+    const relativeResolvedPath = resolvedPath && relative(commonJsTypesRoot, resolvedPath);
+    if (
+      resolvedPath === undefined ||
+      relativeResolvedPath === undefined ||
+      isAbsolute(relativeResolvedPath) ||
+      relativeResolvedPath.startsWith("..") ||
+      !resolvedPath.endsWith(".d.cts")
+    ) {
+      unresolvedDeclarations.push(
+        `${relative(process.cwd(), declarationPath)} -> ${imported.fileName}`,
+      );
+    }
+  }
+}
+
+if (unresolvedDeclarations.length > 0) {
+  throw new Error(
+    `CommonJS declarations contain unresolved internal imports: ${unresolvedDeclarations.join(", ")}`,
+  );
+}
 
 const npmEnvironment = {
   ...globalThis.process.env,
@@ -55,6 +110,7 @@ globalThis.console.log(
       fileCount: files.length,
       files: files.map((file) => file.path),
       directRuntimeDependencies: Object.keys(manifest.dependencies ?? {}).length,
+      commonJsDeclarationFiles: commonJsDeclarations.length,
     },
     null,
     2,

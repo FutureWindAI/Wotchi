@@ -34,6 +34,7 @@ application starts sending events; configuration errors do not echo supplied tok
 | `overload.maxEventsPerSecond`  |        — | Optional pre-normalization capture admission rate.            |
 | `overload.burst`               |     rate | Optional token-bucket burst capacity.                         |
 | `overload.alertCooldownMs`     |  `60000` | Cooldown for the sanitized overload signal.                   |
+| `privacy.redactKeys`           |     `[]` | Up to 100 application-specific field names to redact.         |
 | `privacy.maxDepth`             |      `5` | Maximum nested metadata depth; hard cap `20`.                 |
 | `privacy.maxKeys`              |    `100` | Maximum keys visited; hard cap `10000`.                       |
 | `privacy.maxStringLength`      |    `500` | Maximum retained string length; hard cap `32768`.             |
@@ -43,6 +44,24 @@ The queue has concurrency `1` in the current release. Values above the hard caps
 with `WotchiConfigurationError`. When the queue is full, new notification work is dropped
 and the host request is not delayed. `getDiagnostics()` exposes counters for dropped work and
 notifier failures, timeouts, circuit skips, overload drops, and captures attempted after shutdown.
+
+## Application-specific redaction keys
+
+Add field names that are sensitive in your application but are not covered by Wotchi's built-in
+credential-key rules. Matching is case-insensitive and ignores punctuation. Values are redacted
+before storage, fingerprinting, callbacks, logging, or notifier delivery.
+
+```ts
+const wotchi = createWotchi({
+  service: "orders-api",
+  environment: "production",
+  privacy: { redactKeys: ["customerSecret", "paymentReference"] },
+  notifiers: [consoleNotifier()],
+});
+```
+
+Use stable field names rather than secret values. Empty entries and lists longer than 100 keys are
+rejected during configuration validation.
 
 ## Overload admission
 

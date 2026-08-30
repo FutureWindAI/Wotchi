@@ -3,7 +3,7 @@
 ## Current status
 
 Wotchi is an installable, framework-independent SDK with optional Express and NestJS adapters. The
-Beta.6 provides bounded input handling, URL-aware redaction,
+current package provides bounded input handling, URL-aware redaction,
 fingerprinting, grouping, threshold/cooldown policy, deterministic incident construction,
 diagnostics, bounded notification queueing, notifier timeouts/circuit protection, text console, Telegram, opt-in process monitoring,
 actionable context, safe event controls, a generic HTTPS webhook notifier, JSON console output,

@@ -1,4 +1,7 @@
-import { copyFile, mkdir, readdir, rm, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
+
+const commonJsDeclarationSource = (source) =>
+  source.replace(/(["'])(\.{1,2}\/[^"']+)\.js\1/g, "$1$2.cjs$1");
 
 const copyCommonJsDeclarations = async (source, destination) => {
   await mkdir(destination, { recursive: true });
@@ -11,6 +14,9 @@ const copyCommonJsDeclarations = async (source, destination) => {
     const destinationPath = `${destination}/${destinationName}`;
     if (entry.isDirectory()) {
       await copyCommonJsDeclarations(sourcePath, destinationPath);
+    } else if (entry.name.endsWith(".d.ts")) {
+      const declaration = await readFile(sourcePath, "utf8");
+      await writeFile(destinationPath, commonJsDeclarationSource(declaration), "utf8");
     } else {
       await copyFile(sourcePath, destinationPath);
     }
