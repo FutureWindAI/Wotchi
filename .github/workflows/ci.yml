@@ -56,7 +56,7 @@ jobs:
         run: npm run security:audit
 
       - name: Secret scan
-        uses: docker://zricethezav/gitleaks:latest
+        uses: docker://zricethezav/gitleaks@sha256:cdbb7c955abce02001a9f6c9f602fb195b7fadc1e812065883f695d1eeaba854 # v8.28.0
         with:
           args: detect --source=/github/workspace --no-banner --redact
 
@@ -74,7 +74,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        node: [18.x, 20.x, 22.x, 24.x, 26.x]
+        node: [22.14.0, 22.x, 24.x, 26.x]
     steps:
       - name: Check out source
         uses: actions/checkout@v6

@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing protected Git tag to release (for example v0.1.0-beta.6)"
+        description: "Existing protected Git tag to release (for example v1.0.0-rc.1)"
         required: true
-        default: v0.1.0-beta.6
+        default: v1.0.0-rc.1
         type: string
       dist_tag:
         description: "npm distribution tag for the staged package"
         required: true
-        default: beta
+        default: next
         type: choice
         options:
           - beta
@@ -63,6 +63,18 @@ jobs:
             exit 1
           fi
 
+          if ! git show-ref --verify --quiet "refs/tags/$RELEASE_TAG"; then
+            echo "$RELEASE_TAG is not an existing Git tag" >&2
+            exit 1
+          fi
+
+          release_commit="$(git rev-list -n 1 "$RELEASE_TAG")"
+          git fetch origin main --no-tags
+          if ! git merge-base --is-ancestor "$release_commit" origin/main; then
+            echo "Tag $RELEASE_TAG is not reachable from origin/main" >&2
+            exit 1
+          fi
+
           expected_version="${RELEASE_TAG#v}"
           actual_version="$(node -p "require('./package.json').version")"
           if [[ "$actual_version" != "$expected_version" ]]; then
@@ -72,6 +84,11 @@ jobs:
 
           if [[ "$DIST_TAG" == "latest" && "$actual_version" == *-* ]]; then
             echo "A prerelease version cannot be staged with the latest dist-tag" >&2
+            exit 1
+          fi
+
+          if [[ "$actual_version" == *-rc.* && "$DIST_TAG" != "next" ]]; then
+            echo "RC versions must use the next dist-tag" >&2
             exit 1
           fi
 
@@ -105,6 +122,9 @@ jobs:
       - name: Verify packed consumer exports
         run: npm run test:compat
 
+      - name: Verify the complete packed framework matrix
+        run: npm run test:compat:matrix
+
       - name: Run performance gates
         run: |
           npm run benchmark
@@ -113,6 +133,7 @@ jobs:
       - name: Save the exact release tarball for review
         run: |
           mkdir -p release-artifact
+          git rev-parse HEAD > release-artifact/release-commit.txt
           npm pack --pack-destination release-artifact --json > release-artifact/pack.json
 
       - name: Upload release artifact
@@ -126,6 +147,8 @@ jobs:
   osv:
     name: OSV-Scanner
     uses: google/osv-scanner-action/.github/workflows/osv-scanner-reusable.yml@v2.5.0
+    with:
+      ref: ${{ inputs.tag }}
     permissions:
       actions: read
       contents: read
@@ -157,7 +180,7 @@ jobs:
 
       - name: Use npm staged-publishing CLI
         run: |
-          npm install --global npm@11.15.0
+          npm install --global npm@11.19.1
           npm --version
 
       - name: Install locked dependencies
@@ -166,7 +189,7 @@ jobs:
       - name: Confirm the package is bootstrapped
         run: |
           if ! npm view "$NPM_PACKAGE" version --registry="$NPM_REGISTRY" >/dev/null 2>&1; then
-            echo "$NPM_PACKAGE is not published yet. Bootstrap the first beta manually with owner approval before using staged publishing." >&2
+            echo "$NPM_PACKAGE is not published yet. Bootstrap the package manually with owner approval before using staged publishing." >&2
             exit 1
           fi
 
@@ -193,6 +216,12 @@ jobs:
           tarball="$(find release-artifact -maxdepth 1 -type f -name '*.tgz' -print -quit)"
           if [[ -z "$tarball" ]]; then
             echo "The release-gates job did not provide a tarball." >&2
+            exit 1
+          fi
+          expected_commit="$(tr -d '[:space:]' < release-artifact/release-commit.txt)"
+          actual_commit="$(git rev-parse HEAD)"
+          if [[ "$actual_commit" != "$expected_commit" ]]; then
+            echo "Gate artifact commit $expected_commit does not match $actual_commit" >&2
             exit 1
           fi
           test -f release-artifact/pack.json

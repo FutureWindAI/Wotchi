@@ -1,5 +1,6 @@
 import process from "node:process";
 import {
+  fetchWithTimeout,
   publishedMetadataFailures,
   publishedMetadataFromRegistryDocument,
   publishedTarballFailures,
@@ -12,12 +13,11 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v
   process.exitCode = 1;
 } else {
   let metadata;
-  const controller = new globalThis.AbortController();
-  const timeout = globalThis.setTimeout(() => controller.abort(), 10_000);
   try {
-    const response = await globalThis.fetch(
+    const response = await fetchWithTimeout(
+      globalThis.fetch,
       `https://registry.npmjs.org/${encodeURIComponent(WOTCHI_PACKAGE_NAME)}`,
-      { headers: { accept: "application/json" }, signal: controller.signal },
+      { headers: { accept: "application/json" } },
     );
     if (!response.ok) {
       throw new Error(`Registry returned ${response.status}`);
@@ -26,17 +26,14 @@ if (typeof version !== "string" || !/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/.test(v
   } catch {
     console.error(`Could not read published metadata for ${WOTCHI_PACKAGE_NAME}@${version}`);
     process.exitCode = 1;
-  } finally {
-    globalThis.clearTimeout(timeout);
   }
 
   if (metadata !== undefined) {
     const failures = publishedMetadataFailures(metadata, version);
     if (failures.length === 0) {
       try {
-        const tarballResponse = await globalThis.fetch(metadata.dist.tarball, {
+        const tarballResponse = await fetchWithTimeout(globalThis.fetch, metadata.dist.tarball, {
           headers: { accept: "application/octet-stream" },
-          signal: controller.signal,
         });
         if (!tarballResponse.ok) {
           failures.push(`Registry tarball returned ${tarballResponse.status}`);

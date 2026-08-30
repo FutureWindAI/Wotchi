@@ -1,6 +1,6 @@
 {
   "name": "@futurewindai/wotchi",
-  "version": "0.1.0-beta.6",
+  "version": "1.0.0-rc.1",
   "description": "Low-noise error alerts for Node.js, Express, and NestJS applications",
   "keywords": [
     "nodejs",
@@ -17,7 +17,7 @@
   "license": "Apache-2.0",
   "type": "module",
   "engines": {
-    "node": ">=18.18.0"
+    "node": ">=22.14.0"
   },
   "sideEffects": false,
   "publishConfig": {
@@ -95,7 +95,7 @@
     "verify:package": "npm run build && node scripts/verify-package.mjs",
     "verify:published-metadata": "node scripts/verify-published-metadata.mjs",
     "test:compat": "npm run build && node test/compatibility/package-exports.smoke.cjs && node test/compatibility/framework-isolation.cjs",
-    "test:compat:matrix": "npm run build && node scripts/run-compatibility-matrix.mjs",
+    "test:compat:matrix": "npm run build && node scripts/run-compatibility-matrix.mjs --framework all --module both",
     "benchmark": "npm run build && node --expose-gc scripts/run-benchmarks.mjs",
     "benchmark:queue": "npm run test:compile && node --test .test-dist/test/performance/queue-saturation.bench.js",
     "security:audit": "npm audit --audit-level=moderate",
@@ -103,8 +103,8 @@
     "security:all": "npm run security:audit && npm run security:osv"
   },
   "peerDependencies": {
-    "@nestjs/common": "^10.4.0 || ^11.0.0",
-    "@nestjs/core": "^10.4.0 || ^11.0.0",
+    "@nestjs/common": "^10.4.0 || ^11.0.0 || ^12.0.1",
+    "@nestjs/core": "^10.4.0 || ^11.0.0 || ^12.0.1",
     "express": "^4.18.0 || ^5.0.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.0"
@@ -128,11 +128,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@nestjs/common": "^11.1.28",
-    "@nestjs/core": "^11.1.28",
-    "@nestjs/platform-express": "^11.1.28",
+    "@nestjs/common": "^12.0.1",
+    "@nestjs/core": "^12.0.1",
+    "@nestjs/platform-express": "^12.0.1",
     "@types/express": "^5.0.6",
-    "@types/node": "^16.18.126",
+    "@types/node": "^22.20.1",
     "eslint": "^10.8.0",
     "express": "^5.2.1",
     "prettier": "^3.9.6",

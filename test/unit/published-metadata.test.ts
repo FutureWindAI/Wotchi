@@ -29,19 +29,19 @@ test("published metadata validation accepts npm registry metadata without inline
   const { publishedMetadataFailures } = await import(metadataModuleUrl);
   const validMetadata = {
     name: "@futurewindai/wotchi",
-    version: "0.1.0-beta.6",
+    version: "1.0.0-rc.1",
     description: "Low-noise error alerts for Node.js, Express, and NestJS applications",
     license: "Apache-2.0",
     homepage: "https://github.com/FutureWindAI/Wotchi",
     repository: { url: "git+ssh://git@github.com/FutureWindAI/Wotchi.git" },
     bugs: { url: "https://github.com/FutureWindAI/Wotchi/issues" },
-    dist: { tarball: "https://registry.npmjs.org/@futurewindai/wotchi/-/wotchi-0.1.0-beta.6.tgz" },
+    dist: { tarball: "https://registry.npmjs.org/@futurewindai/wotchi/-/wotchi-1.0.0-rc.1.tgz" },
     readmeFilename: "README.md",
   };
 
-  assert.deepEqual(publishedMetadataFailures(validMetadata, "0.1.0-beta.6"), []);
+  assert.deepEqual(publishedMetadataFailures(validMetadata, "1.0.0-rc.1"), []);
   assert.deepEqual(
-    publishedMetadataFailures({ ...validMetadata, readmeFilename: "package.md" }, "0.1.0-beta.6"),
+    publishedMetadataFailures({ ...validMetadata, readmeFilename: "package.md" }, "1.0.0-rc.1"),
     ["Registry metadata does not identify README.md"],
   );
 });
@@ -51,19 +51,19 @@ test("published metadata keeps the registry README filename for the requested ve
   const metadata = publishedMetadataFromRegistryDocument(
     {
       versions: {
-        "0.1.0-beta.6": {
+        "1.0.0-rc.1": {
           name: "@futurewindai/wotchi",
-          version: "0.1.0-beta.6",
+          version: "1.0.0-rc.1",
           readmeFilename: "README.md",
         },
       },
     },
-    "0.1.0-beta.6",
+    "1.0.0-rc.1",
   );
 
   assert.deepEqual(metadata, {
     name: "@futurewindai/wotchi",
-    version: "0.1.0-beta.6",
+    version: "1.0.0-rc.1",
     readmeFilename: "README.md",
   });
 });
@@ -78,4 +78,27 @@ test("published tarball validation requires a non-empty package README", async (
   assert.deepEqual(publishedTarballFailures(tarGz([["package/package.json", "{}"]])), [
     "Published tarball has no README.md",
   ]);
+});
+
+test("published metadata fetches abort independently when their timeout expires", async () => {
+  const { fetchWithTimeout } = await import(metadataModuleUrl);
+  assert.equal(typeof fetchWithTimeout, "function");
+  let aborted = false;
+  const blockedFetch = (_input: string, init?: { signal?: AbortSignal }): Promise<Response> =>
+    new Promise((_resolve, reject) => {
+      init?.signal?.addEventListener(
+        "abort",
+        () => {
+          aborted = true;
+          reject(new Error("fetch aborted"));
+        },
+        { once: true },
+      );
+    });
+
+  await assert.rejects(
+    fetchWithTimeout(blockedFetch, "https://registry.example.test/package", {}, 5),
+    /fetch aborted/,
+  );
+  assert.equal(aborted, true);
 });

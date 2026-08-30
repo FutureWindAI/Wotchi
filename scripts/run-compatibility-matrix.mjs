@@ -18,34 +18,27 @@ for (let index = 2; index < process.argv.length; index += 1) {
 const framework = args.get("framework") ?? "core";
 const moduleFormat = args.get("module") ?? "commonjs";
 const scriptPath = fileURLToPath(import.meta.url);
-const nodeMajor = Number(process.versions.node.split(".")[0]);
-if (nodeMajor < 18) {
-  throw new Error(`Node.js >=18.18.0 is required (running ${process.version})`);
+const [nodeMajor, nodeMinor, nodePatch] = process.versions.node.split(".").map(Number);
+const isSupportedNode =
+  nodeMajor > 22 ||
+  (nodeMajor === 22 && (nodeMinor > 14 || (nodeMinor === 14 && (nodePatch ?? 0) >= 0)));
+if (!isSupportedNode) {
+  throw new Error(`Node.js >=22.14.0 is required (running ${process.version})`);
 }
-const matrixForNode =
-  nodeMajor === 18
-    ? [
-        ["core", "commonjs"],
-        ["core", "esm"],
-        ["express4", "commonjs"],
-        ["express4", "esm"],
-        ["express5", "commonjs"],
-        ["express5", "esm"],
-        ["nest10", "commonjs"],
-        ["nest10", "esm"],
-      ]
-    : [
-        ["core", "commonjs"],
-        ["core", "esm"],
-        ["express4", "commonjs"],
-        ["express4", "esm"],
-        ["express5", "commonjs"],
-        ["express5", "esm"],
-        ["nest10", "commonjs"],
-        ["nest10", "esm"],
-        ["nest11", "commonjs"],
-        ["nest11", "esm"],
-      ];
+const matrixForNode = [
+  ["core", "commonjs"],
+  ["core", "esm"],
+  ["express4", "commonjs"],
+  ["express4", "esm"],
+  ["express5", "commonjs"],
+  ["express5", "esm"],
+  ["nest10", "commonjs"],
+  ["nest10", "esm"],
+  ["nest11", "commonjs"],
+  ["nest11", "esm"],
+  ["nest12", "commonjs"],
+  ["nest12", "esm"],
+];
 if (framework === "all" || moduleFormat === "both") {
   const combinations =
     framework === "all"
@@ -63,13 +56,14 @@ if (framework === "all" || moduleFormat === "both") {
   }
   process.exit(0);
 }
-const supportedFrameworks = new Set(["core", "express4", "express5", "nest10", "nest11"]);
+const supportedFrameworks = new Set(["core", "express4", "express5", "nest10", "nest11", "nest12"]);
 if (!supportedFrameworks.has(framework)) {
   throw new Error(`Unsupported compatibility framework: ${framework}`);
 }
 if (moduleFormat !== "commonjs" && moduleFormat !== "esm") {
   throw new Error(`Unsupported module format: ${moduleFormat}`);
 }
+const isNestFramework = framework.startsWith("nest");
 
 const frameworkDependencies = {
   core: [],
@@ -86,6 +80,13 @@ const frameworkDependencies = {
     "@nestjs/common@11",
     "@nestjs/core@11",
     "@nestjs/platform-express@11",
+    "reflect-metadata@0.2",
+    "rxjs@7",
+  ],
+  nest12: [
+    "@nestjs/common@12.0.1",
+    "@nestjs/core@12.0.1",
+    "@nestjs/platform-express@12.0.1",
     "reflect-metadata@0.2",
     "rxjs@7",
   ],
@@ -143,11 +144,7 @@ ${
     ? `import expressAdapter = require(${JSON.stringify(`${PACKAGE_NAME}/express`)});`
     : ""
 }
-${
-  framework === "nest10" || framework === "nest11"
-    ? `import nestAdapter = require(${JSON.stringify(`${PACKAGE_NAME}/nest`)});`
-    : ""
-}
+${isNestFramework ? `import nestAdapter = require(${JSON.stringify(`${PACKAGE_NAME}/nest`)});` : ""}
 const client = createWotchi({ service: "types", environment: "test", notifiers: [consoleNotifier()] });
 ${
   framework === "express4" || framework === "express5"
@@ -158,14 +155,14 @@ expressApp.use(expressAdapter.wotchiStatusObserver(client, { statusCodes: [401, 
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `
 declare const nestApp: unknown;
 nestAdapter.registerWotchiNest(nestApp, client);
 nestAdapter.registerWotchiNestStatusObserver(nestApp, client);
 nestAdapter.WotchiModule.forRoot({ service: "module-types", environment: "test", notifiers: [consoleNotifier()] });
 nestAdapter.withWotchiNestFilter(client, {
-  catch(_exception: unknown, _host: import("@nestjs/common").ArgumentsHost): void {},
+  catch(_exception: unknown, _host: unknown): void {},
 });`
     : ""
 }
@@ -178,7 +175,7 @@ ${
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `import { WotchiModule, registerWotchiNest, registerWotchiNestStatusObserver, withWotchiNestFilter } from ${JSON.stringify(`${PACKAGE_NAME}/nest`)};`
     : ""
 }
@@ -192,7 +189,7 @@ expressApp.use(wotchiStatusObserver(client, { statusCodes: [401, 403], statusCla
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `
 declare const nestApp: unknown;
 registerWotchiNest(nestApp, client);
@@ -240,7 +237,7 @@ ${
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `import { WotchiModule, registerWotchiNest, registerWotchiNestStatusObserver, withWotchiNestFilter } from ${JSON.stringify(`${PACKAGE_NAME}/nest`)};`
     : ""
 }
@@ -254,7 +251,7 @@ expressApp.use(wotchiStatusObserver(client, { statusCodes: [401, 403], statusCla
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `
 declare const nestApp: unknown;
 registerWotchiNest(nestApp, client);
@@ -284,7 +281,7 @@ const run = async () => {
       : ""
   }
   ${
-    framework === "nest10" || framework === "nest11"
+    isNestFramework
       ? `
   require("reflect-metadata");
   assert.equal(typeof require("@nestjs/common").Module, "function");
@@ -313,7 +310,7 @@ assert.equal(typeof (await import(${JSON.stringify(`${PACKAGE_NAME}/express`)}))
     : ""
 }
 ${
-  framework === "nest10" || framework === "nest11"
+  isNestFramework
     ? `
 await import("reflect-metadata");
 assert.equal(typeof (await import("@nestjs/common")).Module, "function");

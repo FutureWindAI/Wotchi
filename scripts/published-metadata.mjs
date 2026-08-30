@@ -10,6 +10,16 @@ const stringValue = (value) => (typeof value === "string" ? value.trim() : "");
 const nestedString = (value, key) =>
   typeof value === "object" && value !== null ? stringValue(value[key]) : "";
 
+export async function fetchWithTimeout(fetchFunction, input, init = {}, timeoutMs = 10_000) {
+  const controller = new globalThis.AbortController();
+  const timeout = globalThis.setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetchFunction(input, { ...init, signal: controller.signal });
+  } finally {
+    globalThis.clearTimeout(timeout);
+  }
+}
+
 export function publishedMetadataFromRegistryDocument(document, version) {
   if (typeof document !== "object" || document === null || Array.isArray(document)) {
     return undefined;
