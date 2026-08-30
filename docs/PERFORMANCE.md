@@ -11,25 +11,25 @@ npm run benchmark:queue
 
 The benchmark uses Node's built-in `perf_hooks`, runs latency and heap scenarios in one process, and requires `--expose-gc` for the heap gates. The queue benchmark holds a notifier unresolved, admits 101 alerts, drops overflow, and checks that Express and NestJS responses complete while notification work is blocked. It is a release signal, not a universal production-performance guarantee; results depend on runtime, hardware, and workload.
 
-## Latest release-candidate result
+## Stable v1 result
 
-Recorded for `1.0.0-rc.1` on 2026-08-30, macOS arm64, Node.js `v22.14.0`:
+Recorded for `1.0.0` on 2026-08-30, macOS arm64, Node.js `v22.14.0`:
 
 | Measurement                                     |         Result |              Gate |
 | ----------------------------------------------- | -------------: | ----------------: |
-| Capture p95                                     |    `0.0354 ms` |           `<1 ms` |
-| Capture p99                                     |    `0.0354 ms` |           `<2 ms` |
-| Duplicate heap delta, 10,000 events             |    `0.183 MiB` |         `<10 MiB` |
-| Unique heap delta, 1,000 events, max 200 groups |    `0.101 MiB` |         `<20 MiB` |
-| Prometheus render p95, 100 renders              |    `0.0057 ms` |           `<1 ms` |
-| Packed npm tarball                              | `60,820 bytes` | `<=153,600 bytes` |
+| Capture p95                                     |    `0.0372 ms` |           `<1 ms` |
+| Capture p99                                     |    `0.0372 ms` |           `<2 ms` |
+| Duplicate heap delta, 10,000 events             |    `0.192 MiB` |         `<10 MiB` |
+| Unique heap delta, 1,000 events, max 200 groups |    `0.095 MiB` |         `<20 MiB` |
+| Prometheus render p95, 100 renders              |    `0.0058 ms` |           `<1 ms` |
+| Packed npm tarball                              | `60,756 bytes` | `<=153,600 bytes` |
 
 These measurements are one reference run, not a production guarantee. Repeat them on the target
 runtime and workload before making performance claims.
 
 ## Queue saturation result
 
-Recorded for `1.0.0-rc.1` on 2026-08-30, macOS arm64, Node.js `v22.14.0`, with localhost binding enabled:
+Recorded for `1.0.0` on 2026-08-30, macOS arm64, Node.js `v22.14.0`, with localhost binding enabled:
 
 | Check                                                 | Result        |
 | ----------------------------------------------------- | ------------- |

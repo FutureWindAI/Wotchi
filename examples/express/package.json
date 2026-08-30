@@ -8,7 +8,7 @@
     "start": "npm run build && node dist/app.js"
   },
   "dependencies": {
-    "@futurewindai/wotchi": "1.0.0-rc.1",
+    "@futurewindai/wotchi": "1.0.0",
     "express": "^5.2.1"
   },
   "devDependencies": {

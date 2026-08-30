@@ -3,13 +3,13 @@
 This guide takes about five minutes and uses console delivery only. No account, database,
 collector, or external service is required.
 
-## 1. Install the release candidate
+## 1. Install the stable package
 
 Use Node.js `>=22.14.0`; the Node.js 22, 24, and 26 release lines are tested, and a maintained LTS
 line is recommended for production:
 
 ```bash
-npm install @futurewindai/wotchi@next
+npm install @futurewindai/wotchi
 ```
 
 ## 2. Create a client

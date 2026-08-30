@@ -43,10 +43,10 @@ node scripts/run-compatibility-matrix.mjs --framework core --module commonjs
 
 The hosted CI workflow runs the full matrix on Node.js 22.14.0, the latest Node.js 22 patch, Node.js 24, and Node.js 26. A local registry or DNS failure is inconclusive and must not be recorded as a compatibility failure or a pass.
 
-## RC1 candidate evidence
+## Stable v1 evidence
 
-The `1.0.0-rc.1` candidate passed the local packed-tarball matrix on Node.js 22.14.0 for core,
+The `1.0.0` package passes the local packed-tarball matrix on Node.js 22.14.0 for core,
 Express 4/5, and NestJS 10/11/12 in both ESM and CommonJS. The full integration, unit, and security
-suite also passed against the root NestJS 12.0.1 development installation. The hosted workflow is
-configured to repeat the packed matrix across every advertised Node.js line; use the workflow status
-for the tag-specific hosted result after the candidate commit is pushed.
+suite passes against the root NestJS 12.0.1 development installation. The release workflow repeats
+the packed matrix across every advertised Node.js line; use the workflow status for the tag-specific
+hosted result.

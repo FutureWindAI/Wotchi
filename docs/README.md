@@ -1,13 +1,13 @@
 # Wotchi documentation
 
-Wotchi is a small in-process incident-alerting SDK for Node.js applications. RC1 supports Express
+Wotchi is a small in-process incident-alerting SDK for Node.js applications. Stable v1 supports Express
 4/5, NestJS 10/11/12, console alerts, optional Telegram delivery, bounded HTTPS webhooks, aggregate
 diagnostics export, test-alert diagnostics, opt-in overload admission, notifier protection, graceful
 shutdown, and runtime-pressure alerts.
 
 ## Start here
 
-- [Getting started](GETTING_STARTED.md) — install the release candidate and trigger a first grouped alert.
+- [Getting started](GETTING_STARTED.md) — install the stable package and trigger a first grouped alert.
 - [Examples](EXAMPLES.md) — run the checked-in Express and NestJS examples.
 - [API reference](API.md) — public exports, methods, and framework entry points.
 
@@ -28,5 +28,5 @@ shutdown, and runtime-pressure alerts.
 - [Contributing](../CONTRIBUTING.md) — scope, support, and pull-request expectations.
 - [Changelog](../CHANGELOG.md) — released changes.
 
-The release candidate version is `1.0.0-rc.1`. Install it from the prerelease channel with
-`npm install @futurewindai/wotchi@next` after publication.
+The current stable version is `1.0.0`. Install it from the default npm channel with
+`npm install @futurewindai/wotchi`.

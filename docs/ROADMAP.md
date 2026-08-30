@@ -8,13 +8,13 @@ is limited to the published package and its documentation.
 These are non-binding planning windows, not release promises. Each release remains subject to
 security, compatibility, performance, package, and maintainer-approval gates.
 
-| Window       | Focus                                                                                                                                    | Exit signal                                                                               |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Aug–Sep 2026 | RC hardening: compatibility, release safety, actionable context, installation diagnostics, deployment recipes, and worker documentation. | A reviewed immutable release-candidate artifact passes every release gate.                |
-| Q4 2026      | Stable-readiness review: API feedback, compatibility evidence, security review, and operational documentation.                           | Maintainers decide whether the API and evidence justify a stable release.                 |
-| 2027+        | Separate design work for additional notifiers, collector/relay delivery, and optional AI-assisted wording.                               | An approved design defines trust boundaries, resource budgets, and maintenance ownership. |
+| Window   | Focus                                                                                                                        | Exit signal                                                                               |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Aug 2026 | Stable v1: compatibility, release safety, actionable context, installation diagnostics, deployment recipes, and worker docs. | An immutable `1.0.0` artifact passes every release gate and is published to `latest`.     |
+| Q4 2026  | Post-stable feedback, compatibility evidence, security review, and operational documentation.                                | Maintainers prioritize verified user issues without expanding the SDK's trust boundary.   |
+| 2027+    | Separate design work for additional notifiers, collector/relay delivery, and optional AI-assisted wording.                   | An approved design defines trust boundaries, resource budgets, and maintenance ownership. |
 
-## Current release candidate
+## Current stable release
 
 - Bounded in-process error capture and grouping
 - Redaction before storage, fingerprinting, logging, or transmission

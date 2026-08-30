@@ -3,7 +3,7 @@
 The public API is exported from one npm package. Framework adapters are optional subpath imports;
 unused framework runtime modules are not loaded by the root entry point.
 
-The current release candidate includes actionable context, event controls, status observation, bounded
+The current stable release includes actionable context, event controls, status observation, bounded
 HTTPS webhooks, and `testAlert()` diagnostics.
 
 ## Root import

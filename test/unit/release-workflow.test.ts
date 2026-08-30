@@ -42,7 +42,7 @@ test("CI uses an immutable Gitleaks image and the package matrix has explicit co
   );
 });
 
-test("RC1 metadata and compatibility gates share the supported runtime contract", async () => {
+test("stable v1 metadata and compatibility gates share the supported runtime contract", async () => {
   const [
     releaseWorkflow,
     ciWorkflow,
@@ -84,27 +84,50 @@ test("RC1 metadata and compatibility gates share the supported runtime contract"
     dependencies: Record<string, string>;
   };
 
-  assert.equal(packageJson.version, "1.0.0-rc.1");
+  assert.equal(packageJson.version, "1.0.0");
   assert.equal(packageJson.engines.node, ">=22.14.0");
   assert.equal(packageJson.peerDependencies["@nestjs/common"], "^10.4.0 || ^11.0.0 || ^12.0.1");
   assert.equal(packageJson.peerDependencies["@nestjs/core"], "^10.4.0 || ^11.0.0 || ^12.0.1");
   assert.equal(packageJson.devDependencies["@nestjs/common"], "^12.0.1");
-  assert.equal(lockJson.version, "1.0.0-rc.1");
-  assert.equal(lockJson.packages[""]?.version, "1.0.0-rc.1");
+  assert.equal(lockJson.version, "1.0.0");
+  assert.equal(lockJson.packages[""]?.version, "1.0.0");
   assert.equal(lockJson.packages[""]?.engines?.node, ">=22.14.0");
   assert.equal(
     lockJson.packages[""]?.peerDependencies?.["@nestjs/common"],
     "^10.4.0 || ^11.0.0 || ^12.0.1",
   );
-  assert.equal(expressExample.dependencies["@futurewindai/wotchi"], "1.0.0-rc.1");
-  assert.equal(nestExample.dependencies["@futurewindai/wotchi"], "1.0.0-rc.1");
+  assert.equal(expressExample.dependencies["@futurewindai/wotchi"], "1.0.0");
+  assert.equal(nestExample.dependencies["@futurewindai/wotchi"], "1.0.0");
   assert.equal(nestExample.dependencies["@nestjs/common"], "^12.0.1");
-  assert.match(releaseWorkflow, /default: v1\.0\.0-rc\.1/);
-  assert.match(releaseWorkflow, /default: next/);
+  assert.match(releaseWorkflow, /default: v1\.0\.0/);
+  assert.match(releaseWorkflow, /default: latest/);
   assert.match(ciWorkflow, /node: \[22\.14\.0, 22\.x, 24\.x, 26\.x\]/);
   assert.match(compatibilityMatrix, /Node\.js >=22\.14\.0 is required/);
   assert.match(compatibilityMatrix, /nest12: \[/);
   assert.match(compatibilityMatrix, /"@nestjs\/common@12\.0\.1"/);
+});
+
+test("current public documentation describes the stable release without prerelease install guidance", async () => {
+  const currentPublicFiles = [
+    "README.md",
+    "docs/README.md",
+    "docs/GETTING_STARTED.md",
+    "docs/API.md",
+    "docs/ARCHITECTURE.md",
+    "docs/COMPATIBILITY.md",
+    "docs/PERFORMANCE.md",
+    "docs/ROADMAP.md",
+    "examples/express/README.md",
+    "examples/nest/README.md",
+    "examples/production-recipe/README.md",
+  ];
+  const documents = await Promise.all(currentPublicFiles.map(readWorkspaceFile));
+  const combined = documents.join("\n");
+
+  assert.doesNotMatch(combined, /1\.0\.0-rc\.1|@next|release candidate|RC1/i);
+  assert.match(documents[0] ?? "", /> \*\*Status:\*\* Stable \(`1\.0\.0`\)\./);
+  assert.match(documents[0] ?? "", /npm install @futurewindai\/wotchi\n/);
+  assert.match(documents[1] ?? "", /The current stable version is `1\.0\.0`\./);
 });
 
 test("the packaged README links repository documents to the immutable release tag", async () => {

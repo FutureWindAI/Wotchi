@@ -6,6 +6,15 @@ All notable changes to Wotchi are documented here.
 
 No unreleased changes yet.
 
+## 1.0.0 — 2026-08-30
+
+- Promoted the verified `1.0.0-rc.1` API and runtime behavior to the first stable release without
+  adding a breaking change.
+- Changed the default installation and staged-release guidance to the stable `latest` distribution
+  tag while retaining the immutable beta and release-candidate history.
+- Audited the npm description, packaged README, public documentation, examples, compatibility
+  evidence, performance evidence, and immutable release links for stable-v1 accuracy.
+
 ## 1.0.0-rc.1 — 2026-08-30
 
 - Promoted the package to the first `1.0.0` release candidate, published through the `next`

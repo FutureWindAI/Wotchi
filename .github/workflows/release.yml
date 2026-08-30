@@ -6,14 +6,14 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: "Existing protected Git tag to release (for example v1.0.0-rc.1)"
+        description: "Existing protected Git tag to release (for example v1.0.0)"
         required: true
-        default: v1.0.0-rc.1
+        default: v1.0.0
         type: string
       dist_tag:
         description: "npm distribution tag for the staged package"
         required: true
-        default: next
+        default: latest
         type: choice
         options:
           - beta

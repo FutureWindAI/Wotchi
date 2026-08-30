@@ -91,8 +91,8 @@ captured a second time.
 - Node.js `>=22.14.0` compatibility target;
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
-- no request/response bodies, raw headers, automatic environment collection, or hosted collector in the current release candidate;
-- console, Telegram, and generic HTTPS webhook are the notification channels in the current release candidate.
+- no request/response bodies, raw headers, automatic environment collection, or hosted collector in the current stable release;
+- console, Telegram, and generic HTTPS webhook are the notification channels in the current stable release.
 - webhook destinations are explicit application-owned endpoints; Wotchi does not provide a hosted relay.
 - trace context is passed through from existing instrumentation; Wotchi does not install an OpenTelemetry SDK.
 
