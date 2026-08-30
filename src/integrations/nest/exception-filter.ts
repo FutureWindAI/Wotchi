@@ -1,6 +1,7 @@
 import { Catch, HttpException, type ArgumentsHost, type HttpServer } from "@nestjs/common";
 import { BaseExceptionFilter } from "@nestjs/core";
 import type { WotchiClient } from "../../core/types.js";
+import { normalizeRequestContextOptions } from "../request-context.js";
 import { captureWotchiNestException } from "./capture.js";
 import type { NestExceptionFilterLike } from "./filter-wrapper.js";
 import type { NestWotchiOptions } from "./request-context.js";
@@ -25,13 +26,16 @@ const matchesException = (filter: NestExceptionFilterLike, exception: unknown): 
 
 @Catch()
 export class WotchiNestExceptionFilter extends BaseExceptionFilter<unknown> {
+  private readonly options: NestWotchiOptions;
+
   public constructor(
     private readonly client: WotchiClient,
     applicationRef?: HttpServer,
-    private readonly options?: NestWotchiOptions,
+    options?: NestWotchiOptions,
     private readonly previousGlobalFilters: readonly NestExceptionFilterLike[] = [],
   ) {
     super(applicationRef);
+    this.options = normalizeRequestContextOptions(options);
   }
 
   public override catch(exception: unknown, host: ArgumentsHost): void {

@@ -34,35 +34,37 @@ export function normalizeRoutePath(value: unknown): string | undefined {
   return path.split("/").map(dynamicSegment).join("/").slice(0, MAX_ROUTE_LENGTH);
 }
 
-const normalizeRequestIdProperty = (property: string | undefined): string | undefined => {
+const normalizePropertyName = (
+  property: string | undefined,
+  optionName: keyof RequestContextOptions,
+): string | undefined => {
   if (property === undefined) {
     return undefined;
   }
   if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property)) {
-    throw new TypeError("requestIdProperty must be a simple property name");
+    throw new TypeError(`${optionName} must be a simple property name`);
   }
   return property;
 };
 
-const normalizeTraceContextProperty = (property: string | undefined): string | undefined => {
-  if (property === undefined) {
-    return undefined;
-  }
-  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property)) {
-    throw new TypeError("traceContextProperty must be a simple property name");
-  }
-  return property;
-};
-
-const normalizeCorrelationIdProperty = (property: string | undefined): string | undefined => {
-  if (property === undefined) {
-    return undefined;
-  }
-  if (!/^[A-Za-z_$][A-Za-z0-9_$]*$/.test(property)) {
-    throw new TypeError("correlationIdProperty must be a simple property name");
-  }
-  return property;
-};
+export function normalizeRequestContextOptions(
+  options?: RequestContextOptions,
+): Readonly<RequestContextOptions> {
+  const requestIdProperty = normalizePropertyName(options?.requestIdProperty, "requestIdProperty");
+  const correlationIdProperty = normalizePropertyName(
+    options?.correlationIdProperty,
+    "correlationIdProperty",
+  );
+  const traceContextProperty = normalizePropertyName(
+    options?.traceContextProperty,
+    "traceContextProperty",
+  );
+  return Object.freeze({
+    ...(requestIdProperty === undefined ? {} : { requestIdProperty }),
+    ...(correlationIdProperty === undefined ? {} : { correlationIdProperty }),
+    ...(traceContextProperty === undefined ? {} : { traceContextProperty }),
+  });
+}
 
 const readRequestId = (request: unknown, property: string | undefined): string | undefined => {
   if (property === undefined || !isRecord(request)) {
@@ -133,11 +135,8 @@ export interface RequestContextInput {
 }
 
 export function buildRequestContext(input: RequestContextInput): WotchiRequestContext | undefined {
-  const requestIdProperty = normalizeRequestIdProperty(input.options?.requestIdProperty);
-  const correlationIdProperty = normalizeCorrelationIdProperty(
-    input.options?.correlationIdProperty,
-  );
-  const traceContextProperty = normalizeTraceContextProperty(input.options?.traceContextProperty);
+  const options = normalizeRequestContextOptions(input.options);
+  const { requestIdProperty, correlationIdProperty, traceContextProperty } = options;
   let requestId: string | undefined;
   try {
     requestId = readRequestId(input.request, requestIdProperty);

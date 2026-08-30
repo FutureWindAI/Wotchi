@@ -18,6 +18,9 @@ const wotchiStatusObserver = (
         statusClasses?: readonly string[];
         ignoreStatusCodes?: readonly number[];
         alertThreshold?: number;
+        requestIdProperty?: string;
+        correlationIdProperty?: string;
+        traceContextProperty?: string;
       },
     ) => RequestHandler;
   }
@@ -207,13 +210,14 @@ test("Express error handler promotes request metadata for alert fields and links
     response.status(500);
     throw new Error("express metadata failure");
   });
-  app.use(
-    wotchiErrorHandler(client, {
-      requestIdProperty: "requestId",
-      correlationIdProperty: "correlationId",
-      traceContextProperty: "traceContext",
-    }),
-  );
+  const contextOptions = {
+    requestIdProperty: "requestId",
+    correlationIdProperty: "correlationId",
+    traceContextProperty: "traceContext",
+  };
+  const errorHandler = wotchiErrorHandler(client, contextOptions);
+  contextOptions.requestIdProperty = "headers.x-request-id";
+  app.use(errorHandler);
   app.use((_error: unknown, _request: Request, response: express.Response) => {
     response.status(500).json({ error: "handled" });
   });
@@ -277,6 +281,26 @@ test("Express status observer captures selected direct HTTP responses", async ()
   } finally {
     await close(server);
   }
+});
+
+test("Express adapters reject unsafe request-context property names during setup", () => {
+  const client = createWotchi({
+    service: "express-invalid-context-options-test",
+    environment: "test",
+    notifiers: [{ name: "test", async send(): Promise<void> {} }],
+  });
+
+  assert.throws(
+    () => wotchiErrorHandler(client, { requestIdProperty: "headers.x-request-id" }),
+    /requestIdProperty must be a simple property name/,
+  );
+  assert.throws(
+    () =>
+      wotchiStatusObserver(client, {
+        correlationIdProperty: "headers.x-correlation-id",
+      }),
+    /correlationIdProperty must be a simple property name/,
+  );
 });
 
 test("Express status observer supports ignored statuses and a per-status threshold", async () => {

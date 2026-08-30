@@ -18,6 +18,7 @@ import { createWotchi } from "../../../src/index.js";
 import {
   registerWotchiNest,
   registerWotchiNestStatusObserver,
+  withWotchiNestFilter,
 } from "../../../src/integrations/nest/index.js";
 import type { IncidentAlert, WotchiNotifier } from "../../../src/index.js";
 import type { Request, Response } from "express";
@@ -329,4 +330,31 @@ test("NestJS exception capture suppresses the matching status observer event", a
   } finally {
     await app.close();
   }
+});
+
+test("NestJS adapters reject unsafe request-context property names during setup", () => {
+  const client = createWotchi({
+    service: "nest-invalid-context-options-test",
+    environment: "test",
+    notifiers: [{ name: "test", async send(): Promise<void> {} }],
+  });
+  let adapterReads = 0;
+  const app = {
+    getHttpAdapter: () => {
+      adapterReads += 1;
+      return {};
+    },
+    useGlobalFilters: () => undefined,
+  };
+
+  assert.throws(
+    () => registerWotchiNest(app, client, { traceContextProperty: "trace.context" }),
+    /traceContextProperty must be a simple property name/,
+  );
+  assert.equal(adapterReads, 0);
+  assert.throws(
+    () =>
+      withWotchiNestFilter(client, { catch: () => undefined }, { requestIdProperty: "req[id]" }),
+    /requestIdProperty must be a simple property name/,
+  );
 });

@@ -1,7 +1,7 @@
 import type { RequestHandler } from "express";
 import type { WotchiClient } from "../../core/types.js";
 import { getExpressRequestContext } from "./request-context.js";
-import type { RequestContextOptions } from "../request-context.js";
+import { normalizeRequestContextOptions, type RequestContextOptions } from "../request-context.js";
 import { wasExpressErrorCaptured } from "./state.js";
 
 export type WotchiStatusClass = "4xx" | "5xx";
@@ -66,16 +66,9 @@ const normalizeOptions = (
   options?: WotchiStatusObserverOptions,
 ): NormalizedStatusObserverOptions => {
   const alertThreshold = normalizeAlertThreshold(options?.alertThreshold);
+  const requestContextOptions = normalizeRequestContextOptions(options);
   return {
-    ...(options?.requestIdProperty === undefined
-      ? {}
-      : { requestIdProperty: options.requestIdProperty }),
-    ...(options?.correlationIdProperty === undefined
-      ? {}
-      : { correlationIdProperty: options.correlationIdProperty }),
-    ...(options?.traceContextProperty === undefined
-      ? {}
-      : { traceContextProperty: options.traceContextProperty }),
+    ...requestContextOptions,
     statusCodes: normalizeStatuses(options?.statusCodes, DEFAULT_STATUS_CODES),
     statusClasses: normalizeStatusClasses(options?.statusClasses),
     ignoreStatusCodes: normalizeStatuses(options?.ignoreStatusCodes, []),

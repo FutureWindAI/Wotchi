@@ -1,6 +1,7 @@
 import type { HttpServer } from "@nestjs/common";
 import { HttpAdapterHost } from "@nestjs/core";
 import type { WotchiClient } from "../../core/types.js";
+import { normalizeRequestContextOptions } from "../request-context.js";
 import { WotchiNestExceptionFilter } from "./exception-filter.js";
 import type { NestExceptionFilterLike } from "./filter-wrapper.js";
 import type { NestWotchiOptions } from "./request-context.js";
@@ -43,6 +44,7 @@ export function registerWotchiNest(
   client: WotchiClient,
   options?: NestWotchiOptions,
 ): void {
+  const normalizedOptions = normalizeRequestContextOptions(options);
   const application = app as NestWotchiApplication;
   const directAdapter = application.getHttpAdapter?.();
   const httpAdapter =
@@ -53,7 +55,7 @@ export function registerWotchiNest(
     new WotchiNestExceptionFilter(
       client,
       httpAdapter,
-      options,
+      normalizedOptions,
       getPreviousGlobalFilters(application),
     ),
   );

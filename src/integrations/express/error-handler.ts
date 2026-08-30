@@ -1,5 +1,6 @@
 import type { ErrorRequestHandler } from "express";
 import type { WotchiClient } from "../../core/types.js";
+import { normalizeRequestContextOptions } from "../request-context.js";
 import { getExpressRequestContext, type ExpressWotchiOptions } from "./request-context.js";
 import { markExpressErrorCaptured } from "./state.js";
 
@@ -7,6 +8,7 @@ export function createExpressErrorHandler(
   client: WotchiClient,
   options?: ExpressWotchiOptions,
 ): ErrorRequestHandler {
+  const normalizedOptions = normalizeRequestContextOptions(options);
   return (error, request, response, next): void => {
     markExpressErrorCaptured(request);
     let captured = false;
@@ -18,7 +20,7 @@ export function createExpressErrorHandler(
       response.off("finish", captureAfterResponse);
       response.off("close", captureAfterResponse);
       try {
-        const requestContext = getExpressRequestContext(request, response, options);
+        const requestContext = getExpressRequestContext(request, response, normalizedOptions);
         client.captureException(
           error,
           undefined,
