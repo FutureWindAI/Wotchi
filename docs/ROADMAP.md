@@ -8,19 +8,19 @@ is limited to the published package and its documentation.
 These are non-binding planning windows, not release promises. Each release remains subject to
 security, compatibility, performance, package, and maintainer-approval gates.
 
-| Window       | Focus                                                                                                                                                               | Exit signal                                                                               |
-| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
-| Aug–Sep 2026 | Beta hardening: actionable context, safe grouping controls, generic HTTPS webhook delivery, installation diagnostics, deployment recipes, and worker documentation. | A reviewed immutable beta artifact passes the release gates.                              |
-| Q4 2026      | Stable-readiness review: API feedback, compatibility evidence, security review, and operational documentation.                                                      | Maintainers decide whether the API and evidence justify a stable release.                 |
-| 2027+        | Separate design work for additional notifiers, collector/relay delivery, and optional AI-assisted wording.                                                          | An approved design defines trust boundaries, resource budgets, and maintenance ownership. |
+| Window       | Focus                                                                                                                                    | Exit signal                                                                               |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------- |
+| Aug–Sep 2026 | RC hardening: compatibility, release safety, actionable context, installation diagnostics, deployment recipes, and worker documentation. | A reviewed immutable release-candidate artifact passes every release gate.                |
+| Q4 2026      | Stable-readiness review: API feedback, compatibility evidence, security review, and operational documentation.                           | Maintainers decide whether the API and evidence justify a stable release.                 |
+| 2027+        | Separate design work for additional notifiers, collector/relay delivery, and optional AI-assisted wording.                               | An approved design defines trust boundaries, resource budgets, and maintenance ownership. |
 
-## Current beta
+## Current release candidate
 
 - Bounded in-process error capture and grouping
 - Redaction before storage, fingerprinting, logging, or transmission
 - Console and optional Telegram notifications
 - Actionable context, event controls, status observation, bounded HTTPS webhooks, and `testAlert()`
-- Express 4/5 and NestJS 10/11 adapters
+- Express 4/5 and NestJS 10/11/12 adapters
 - ESM, CommonJS, and TypeScript declaration exports
 - Compatibility, security, performance, and package checks
 - Optional aggregate Prometheus diagnostics export
@@ -29,7 +29,7 @@ security, compatibility, performance, package, and maintainer-approval gates.
 ## Next priorities
 
 - Improve documentation and compatibility examples from user feedback.
-- Continue publishing release evidence with each immutable beta or stable version.
+- Continue publishing release evidence with each immutable prerelease or stable version.
 - Validate runtime-watcher overhead and threshold policy in representative host workloads before enabling it broadly.
 - Consider additional logger integrations only after a small public API and performance review.
 

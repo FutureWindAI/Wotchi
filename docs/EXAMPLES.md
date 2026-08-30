@@ -1,7 +1,7 @@
 # Examples
 
 The Express and NestJS examples use the packed Wotchi package and console delivery. The production
-recipe at the end of this document uses the same public beta APIs.
+recipe at the end of this document uses the same release-candidate APIs.
 
 ## Express 5
 
@@ -31,7 +31,7 @@ for i in 1 2 3; do curl -sS -i http://127.0.0.1:3101/repeat-error; done
 
 The Wotchi handler observes the error and calls the existing Express error path exactly once.
 
-## NestJS 11
+## NestJS 12
 
 Path: [`examples/nest`](../examples/nest)
 
@@ -57,10 +57,10 @@ Trigger the grouped alert:
 for i in 1 2 3; do curl -sS -i http://127.0.0.1:3102/repeat-error; done
 ```
 
-The local NestJS 10 and 11 test stands import `WotchiModule` in `AppModule`, so their `main.ts`
-only creates the Nest application. The global Wotchi filter preserves Nest's standard response body
-and status contract. See the [NestJS API](API.md#nestjs-entry-point) for the custom `APP_FILTER`
-wrapper recipe.
+The packed compatibility matrix exercises NestJS 10, 11, and 12 in ESM and CommonJS. The checked-in
+NestJS 12 example imports `WotchiModule` in `AppModule`, so its `main.ts` only creates the Nest
+application. The global Wotchi filter preserves Nest's standard response body and status contract.
+See the [NestJS API](API.md#nestjs-entry-point) for the custom `APP_FILTER` wrapper recipe.
 
 ## Manual capture
 

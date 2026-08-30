@@ -3,12 +3,13 @@
 This guide takes about five minutes and uses console delivery only. No account, database,
 collector, or external service is required.
 
-## 1. Install the public beta
+## 1. Install the release candidate
 
-Use a supported Node.js release (`18`–`26`; Node.js 22 or 24 LTS is recommended for production):
+Use Node.js `>=22.14.0`; the Node.js 22, 24, and 26 release lines are tested, and a maintained LTS
+line is recommended for production:
 
 ```bash
-npm install @futurewindai/wotchi@beta
+npm install @futurewindai/wotchi@next
 ```
 
 ## 2. Create a client
@@ -105,7 +106,7 @@ export class AppModule {}
 Use `registerWotchiNest(app, wotchi)` only when the application intentionally constructs its
 client in bootstrap code.
 
-See the [NestJS example](EXAMPLES.md#nestjs-11) for a runnable application and trigger command.
+See the [NestJS example](EXAMPLES.md#nestjs-12) for a runnable application and trigger command.
 
 ## 5. Choose the next guide
 

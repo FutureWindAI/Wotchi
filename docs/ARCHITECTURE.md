@@ -88,11 +88,11 @@ captured a second time.
 
 - zero direct runtime dependencies in the current release;
 - optional Express and NestJS peer dependencies;
-- Node.js `>=18.18.0` compatibility target;
+- Node.js `>=22.14.0` compatibility target;
 - bounded memory, queues, payloads, and traversal;
 - redact before storage, fingerprinting, logging, or transmission;
-- no request/response bodies, raw headers, automatic environment collection, or hosted collector in v0.1;
-- console, Telegram, and generic HTTPS webhook are the notification channels in the current beta.
+- no request/response bodies, raw headers, automatic environment collection, or hosted collector in the current release candidate;
+- console, Telegram, and generic HTTPS webhook are the notification channels in the current release candidate.
 - webhook destinations are explicit application-owned endpoints; Wotchi does not provide a hosted relay.
 - trace context is passed through from existing instrumentation; Wotchi does not install an OpenTelemetry SDK.
 

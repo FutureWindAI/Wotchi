@@ -2,9 +2,9 @@
 
 ## Supported Versions
 
-Wotchi targets applications running Node.js `>=18.18.0` and is built and tested across the Node.js 18–26 matrix. Node.js versions below 18.18 are not supported.
+Wotchi targets applications running Node.js `>=22.14.0` and tests the Node.js 22, 24, and 26 release lines. Node.js versions below 22.14 are not supported; use a maintained LTS line for production.
 
-The current package contains the framework-independent capture core, console, Telegram, and generic HTTPS webhook notifiers, Express 4/5 middleware, NestJS 10/11 exception-filter integration, optional HTTP status observation, and opt-in process monitoring. Supported runtime and framework combinations are documented after packed-tarball compatibility and release-security checks.
+The current package contains the framework-independent capture core, console, Telegram, and generic HTTPS webhook notifiers, Express 4/5 middleware, NestJS 10/11/12 exception-filter integration, optional HTTP status observation, and opt-in process monitoring. Supported runtime and framework combinations are documented after packed-tarball compatibility and release-security checks.
 
 ## Reporting a Vulnerability
 

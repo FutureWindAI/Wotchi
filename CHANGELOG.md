@@ -4,10 +4,30 @@ All notable changes to Wotchi are documented here.
 
 ## Unreleased
 
+No unreleased changes yet.
+
+## 1.0.0-rc.1 — 2026-08-30
+
+- Promoted the package to the first `1.0.0` release candidate, published through the `next`
+  distribution tag rather than `latest`.
+- Raised the runtime baseline to Node.js `>=22.14.0` and added explicit minimum-version plus Node.js
+  22/24/26 CI coverage.
+- Added NestJS 12.0.1 support while retaining the packed NestJS 10 and 11 compatibility matrix in
+  both ESM and CommonJS.
+- Made Express and NestJS request-context option validation fail during adapter setup, snapshotting
+  safe property names before request processing.
+- Moved Express/NestJS duplicate-capture state into a `WeakSet`, supporting frozen host request
+  objects without adding Wotchi-owned properties to them.
 - Fixed CommonJS declaration generation so strict Node16/NodeNext consumers can resolve internal
   Wotchi types without an ambient compatibility bridge.
 - Added package verification for every relative import in generated CommonJS declarations.
-- Documented application-specific `privacy.redactKeys` configuration.
+- Hardened the staged-release workflow with exact-tag validation, `main` ancestry, RC-to-`next`
+  enforcement, exact-tag OSV scanning, a full packed framework matrix, and cross-job commit matching.
+- Pinned the CI Gitleaks container immutably, allowlisted only the three historical synthetic
+  redaction-canary fingerprints, and added release-workflow regression coverage.
+- Added independent timeouts for registry metadata and tarball verification requests.
+- Documented application-specific `privacy.redactKeys` configuration and aligned the public RC,
+  compatibility, example, security, and performance guidance.
 
 ## 0.1.0-beta.6 — 2026-08-10
 

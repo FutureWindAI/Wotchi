@@ -11,25 +11,25 @@ npm run benchmark:queue
 
 The benchmark uses Node's built-in `perf_hooks`, runs latency and heap scenarios in one process, and requires `--expose-gc` for the heap gates. The queue benchmark holds a notifier unresolved, admits 101 alerts, drops overflow, and checks that Express and NestJS responses complete while notification work is blocked. It is a release signal, not a universal production-performance guarantee; results depend on runtime, hardware, and workload.
 
-## Latest beta result
+## Latest release-candidate result
 
-Recorded for `0.1.0-beta.6` on 2026-08-10, macOS arm64, Node.js `v22.14.0`:
+Recorded for `1.0.0-rc.1` on 2026-08-30, macOS arm64, Node.js `v22.14.0`:
 
 | Measurement                                     |         Result |              Gate |
 | ----------------------------------------------- | -------------: | ----------------: |
-| Capture p95                                     |     `0.036 ms` |           `<1 ms` |
-| Capture p99                                     |     `0.036 ms` |           `<2 ms` |
-| Duplicate heap delta, 10,000 events             |    `0.194 MiB` |         `<10 MiB` |
-| Unique heap delta, 1,000 events, max 200 groups |    `0.099 MiB` |         `<20 MiB` |
-| Prometheus render p95, 100 renders              |    `0.0048 ms` |           `<1 ms` |
-| Packed npm tarball                              | `60,534 bytes` | `<=153,600 bytes` |
+| Capture p95                                     |    `0.0354 ms` |           `<1 ms` |
+| Capture p99                                     |    `0.0354 ms` |           `<2 ms` |
+| Duplicate heap delta, 10,000 events             |    `0.183 MiB` |         `<10 MiB` |
+| Unique heap delta, 1,000 events, max 200 groups |    `0.101 MiB` |         `<20 MiB` |
+| Prometheus render p95, 100 renders              |    `0.0057 ms` |           `<1 ms` |
+| Packed npm tarball                              | `60,820 bytes` | `<=153,600 bytes` |
 
 These measurements are one reference run, not a production guarantee. Repeat them on the target
 runtime and workload before making performance claims.
 
 ## Queue saturation result
 
-Recorded for `0.1.0-beta.6` on 2026-08-10, macOS arm64, Node.js `v22.14.0`, with localhost binding enabled:
+Recorded for `1.0.0-rc.1` on 2026-08-30, macOS arm64, Node.js `v22.14.0`, with localhost binding enabled:
 
 | Check                                                 | Result        |
 | ----------------------------------------------------- | ------------- |
@@ -43,7 +43,7 @@ The benchmark confirms that notification delivery is outside the framework respo
 
 ## Local adversarial validation
 
-Beta.6 was also exercised with high-frequency duplicates, 50,000 unique errors with
+The bounded implementation has also been exercised with high-frequency duplicates, 50,000 unique errors with
 the hard `maxGroups: 10,000` setting, 10 MiB synthetic stacks, a blocked notifier, slow/failing
 notifiers, cyclic/proxy inputs, credential-shaped URLs, short JWT-like values, and two independent
 application instances. The bounded queue and grouping state remained within their configured caps,
@@ -52,7 +52,7 @@ non-blocking. The deliberately adversarial `maxGroups: 10,000` run used about `2
 after garbage collection and about `150 MiB` RSS high-water growth; this is configuration/input
 pressure, not the default `maxGroups: 200` baseline. Custom notifier promises that never settle can
 hold the single delivery worker, so built-in transport timeouts and graceful shutdown remain
-important. Beta.6 now bounds arbitrary notifier waits with a queue-level timeout and
+important. Wotchi bounds arbitrary notifier waits with a queue-level timeout and
 failure circuit; the unresolved custom promise itself cannot be cancelled. The optional runtime
 watcher is disabled by default and uses one unref'd low-frequency timer; benchmark enabled thresholds
 in the host workload before production use. Cross-instance grouping is intentionally not provided

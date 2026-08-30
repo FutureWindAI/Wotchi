@@ -2,8 +2,8 @@
 
 ## Which runtimes and frameworks are supported?
 
-The package keeps compatibility with Node.js `>=18.18.0`, is tested across Node.js 18–26, and
-recommends Node.js 22 or 24 LTS for production. Express 4/5 and NestJS 10/11 are supported. The
+The package requires Node.js `>=22.14.0`, tests the Node.js 22, 24, and 26 release lines, and
+recommends a maintained LTS line for production. Express 4/5 and NestJS 10/11/12 are supported. The
 compatibility matrix and release evidence are documented in [Compatibility](COMPATIBILITY.md).
 
 ## Does Wotchi replace Winston, Pino, or NestJS Logger?
@@ -31,7 +31,7 @@ does not add a tracing SDK, exporter, or telemetry backend.
 
 ## Can Wotchi expose its own health metrics?
 
-Beta.6 adds `createWotchiPrometheusExporter()`, which renders aggregate counters
+`createWotchiPrometheusExporter()` renders aggregate counters
 and queue/group gauges for a host-owned, protected `/metrics` endpoint. It does not open a listener,
 send network traffic, or include event data, stacks, fingerprints, routes, or secrets.
 
@@ -62,8 +62,9 @@ creation; notifier failures do not escape the capture path.
 
 ## How are releases versioned?
 
-Wotchi follows semantic versioning. Beta versions use the `beta` dist-tag; stable versions use
-`latest`. Published versions are immutable, so fixes require a new version.
+Wotchi follows semantic versioning. Beta versions use the `beta` dist-tag, release candidates use
+`next`, and stable versions use `latest`. Published versions are immutable, so fixes require a new
+version.
 
 ## Where should I report a security issue?
 

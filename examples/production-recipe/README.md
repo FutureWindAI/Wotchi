@@ -1,7 +1,7 @@
 # Wotchi production recipe
 
 This is a small Express 5 deployment shape for Render, Railway, Cloud Run, or a similar platform.
-It targets Wotchi beta.6. Build the package from the repository root before installing this recipe.
+It targets Wotchi `1.0.0-rc.1`. Build the package from the repository root before installing this recipe.
 
 It demonstrates:
 

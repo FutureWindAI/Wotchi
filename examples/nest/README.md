@@ -1,6 +1,6 @@
 # Wotchi NestJS example
 
-This example uses the packed Wotchi SDK with NestJS 11 and the console notifier. It is a small
+This example uses the packed Wotchi SDK with NestJS 12 and the console notifier. It is a small
 consumer application for checking the public `/nest` entry point.
 
 Install dependencies, then start it:

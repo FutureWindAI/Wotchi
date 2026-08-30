@@ -2,13 +2,13 @@
 
 > Low-noise error alerts for Node.js services.
 
-> **Status:** Public beta (`0.1.0-beta.6`). The API may evolve before the first stable release.
+> **Status:** Release candidate (`1.0.0-rc.1`). Validate it in production-like workloads before the first stable release.
 
 [![CI](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/ci.yml)
 [![CodeQL](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml/badge.svg?branch=main)](https://github.com/FutureWindAI/Wotchi/actions/workflows/codeql.yml)
-[![npm](https://img.shields.io/npm/v/%40futurewindai%2Fwotchi?label=npm%20beta)](https://www.npmjs.com/package/@futurewindai/wotchi)
-[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/FutureWindAI/Wotchi/blob/v0.1.0-beta.6/LICENSE)
-[![Node.js 18–26](https://img.shields.io/badge/node-18%E2%80%9326-339933?logo=node.js&logoColor=white)](https://nodejs.org/en/about/previous-releases)
+[![npm](https://img.shields.io/npm/v/%40futurewindai%2Fwotchi/next?label=npm%20next)](https://www.npmjs.com/package/@futurewindai/wotchi)
+[![License](https://img.shields.io/badge/license-Apache--2.0-blue.svg)](https://github.com/FutureWindAI/Wotchi/blob/v1.0.0-rc.1/LICENSE)
+[![Node.js 22.14+](https://img.shields.io/badge/node-%3E%3D22.14.0-339933?logo=node.js&logoColor=white)](https://nodejs.org/en/about/previous-releases)
 
 [Read the Wotchi story on Medium](https://medium.com/@alkazavr94/wotchi-low-noise-error-alerts-for-node-js-services-83cac7cf3f50)
 Wotchi captures application errors in-process, removes sensitive values, groups repeated failures, and delivers bounded console, Telegram, or HTTPS webhook alerts without changing framework response handling. It is a signal-conditioning layer, not a replacement for a full observability platform.
@@ -16,7 +16,7 @@ Wotchi captures application errors in-process, removes sensitive values, groups 
 ## Quick start
 
 ```bash
-npm install @futurewindai/wotchi@beta
+npm install @futurewindai/wotchi@next
 ```
 
 ```ts
@@ -62,7 +62,7 @@ notifier.
 | Bounded capture and queueing              | Repeated failures cannot create unbounded in-memory work.                                                      |
 | Redaction before processing               | Sensitive values are removed before grouping, logging, or transmission.                                        |
 | Grouping and cooldowns                    | Repeated failures produce a small number of useful alerts.                                                     |
-| Express 4/5 and NestJS 10/11 adapters     | Errors are observed while the framework keeps response ownership.                                              |
+| Express 4/5 and NestJS 10/11/12 adapters  | Errors are observed while the framework keeps response ownership.                                              |
 | ESM, CommonJS, and TypeScript types       | Use the package with common Node.js module setups.                                                             |
 | Console and optional Telegram notifiers   | Start locally or self-host delivery without a Wotchi control plane.                                            |
 | Generic HTTPS webhook notifier            | Route bounded JSON alerts to an existing internal alert destination.                                           |
@@ -82,9 +82,9 @@ durable incident history, cross-replica deduplication, dashboards, traces, or pa
 ## Performance evidence
 
 The package has zero direct runtime dependencies and keeps capture, grouping, and notification work
-bounded. On a Node.js 22/macOS arm64 benchmark run of beta.6, capture p95/p99 was
-`0.036 ms`/`0.036 ms`, duplicate-storm retained heap was `0.194 MiB`, and the packed artifact was
-`60,534 bytes`. Prometheus rendering p95 was `0.0048 ms`. The queue benchmark admitted `101` alerts while a notifier was blocked, capped
+bounded. On a Node.js 22.14/macOS arm64 benchmark run of RC1, capture p95/p99 was
+`0.0354 ms`/`0.0354 ms`, duplicate-storm retained heap was `0.183 MiB`, and the packed artifact was
+about `60.8 KB`. Prometheus rendering p95 was `0.0057 ms`. The queue benchmark admitted `101` alerts while a notifier was blocked, capped
 pending work at `100`, and kept Express and NestJS responses completing. These are reproducible local
 measurements, not production guarantees; repeat `npm run benchmark` and `npm run benchmark:queue`
 on your runtime and workload. See [performance evidence](docs/PERFORMANCE.md).
@@ -102,7 +102,7 @@ app.get("/metrics", (_request, response) => {
 });
 ```
 
-Beta.6 also supports opt-in admission control, notifier timeouts/circuits, graceful shutdown, and a
+RC1 also supports opt-in admission control, notifier timeouts/circuits, graceful shutdown, and a
 numeric-only runtime watcher.
 
 It emits only aggregate counters and queue/group gauges. Prometheus, Grafana, or another existing
@@ -165,7 +165,7 @@ export class AppModule {}
 For a custom dependency-injected `APP_FILTER`, keep its response and logging behavior, disable the
 automatic Wotchi filter, and wrap it with `withWotchiNestFilter`. See the [NestJS API](docs/API.md#nestjs-entry-point).
 
-The package keeps compatibility with Node.js `>=18.18.0` and is tested across Node.js 18–26. Node.js 22 or 24 LTS is recommended for production. Express and NestJS adapters are optional subpath integrations, so applications only load the framework adapter they use.
+The package requires Node.js `>=22.14.0` and tests the Node.js 22, 24, and 26 release lines. Use a maintained LTS line—Node.js 22 or 24—for production. Express and NestJS adapters are optional subpath integrations, so applications only load the framework adapter they use.
 
 ## Telegram alerts
 
